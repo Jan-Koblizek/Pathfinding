@@ -195,7 +195,7 @@ public class FlowPaths
                 var pathID = pathIds[j];
                 var centers = PlannerPath.GetPathsFlowNodeCenters(flowGraph, pathID);
 
-                var possiblePath = new UnitPathAssignmentRegionalFlowGraph(assignedUnitCount, pathID, centers, Simulator.Instance.target, flowGraph);
+                var possiblePath = new UnitPathAssignmentRegionalFlowGraph(assignedUnitCount, pathID, centers, flowGraph);
                 unitAssignments.Add(possiblePath);
             }
         }
@@ -215,11 +215,11 @@ public class FlowPaths
         if (!(finishedUnitsLower <= numberOfUnits && numberOfUnits <= finishedUnitsUpper))
         {
 
-            var str = $" O(1) method failed to compute lower and upper bounds \n({finishedUnitsLower} <= {numberOfUnits} <= {finishedUnitsUpper}), recovered by binary search: ";
+            //var str = $" O(1) method failed to compute lower and upper bounds \n({finishedUnitsLower} <= {numberOfUnits} <= {finishedUnitsUpper}), recovered by binary search: ";
             BinarySearch(numberOfUnits, bestPaths, ref lowerBound, ref middleBound, ref upperBound, ref finishedUnitsLower, ref finishedUnitsMiddle, ref finishedUnitsUpper,
                 ref assignmentLower, ref assignmentMiddle, ref assignmentUpper);
 
-            Debug.Assert(false, str + $"({finishedUnitsLower} <= {numberOfUnits} <= {finishedUnitsUpper})");
+            //Debug.Assert(false, str + $"({finishedUnitsLower} <= {numberOfUnits} <= {finishedUnitsUpper})");
         }
 
         //move the middle to be one of the boarders

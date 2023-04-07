@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using Unity.VisualScripting;
 using UnityEditor.Search;
 using UnityEngine;
 using utils;
@@ -352,7 +353,9 @@ public class WaterDecomposition
                             Coord coord2 = gateClusterCoords[1];
                             int x2 = coord2.X;
                             int y2 = coord2.Y;
-                            gateways.Add(new RegionGateway(new Coord(x1, y1), new Coord(x2, y2), region1, region2, gateways.Count));
+
+                            bool surrounded = partiallySurrounded(coord1, map) || partiallySurrounded(coord2, map);
+                            gateways.Add(new RegionGateway(new Coord(x1, y1), new Coord(x2, y2), region1, region2, gateways.Count, surrounded));
                         }
                         //if more than 2 tiles left in gateClusterTiles
                         //choose the two that have maximum distance between them
@@ -388,7 +391,8 @@ public class WaterDecomposition
                                 }
                                 i1++;
                             }
-                            gateways.Add(new RegionGateway(start, end, region1, region2, gateways.Count));
+                            bool surrounded = partiallySurrounded(start, map) || partiallySurrounded(end, map);
+                            gateways.Add(new RegionGateway(start, end, region1, region2, gateways.Count, surrounded));
                         }
                     }
                 }
@@ -404,6 +408,22 @@ public class WaterDecomposition
         }
     }
 
+    private bool partiallySurrounded(Coord coord, bool[,] map)
+    {
+        bool upper = map[coord.X, coord.Y + 1];
+        bool lower = map[coord.X, coord.Y - 1];
+        bool left = map[coord.X - 1, coord.Y];
+        bool right = map[coord.X + 1, coord.Y];
+
+        int counter = 0;
+        if (upper) counter++;
+        if (lower) counter++;
+        if (right) counter++;
+        if (left) counter++;
+
+        if (counter > 2) return false;
+        else return true;
+    }
     
     private void refineGates(bool[,] map, ref List<RegionGateway> gateways, int gateRegionIndex, ref int[,] regionMap)
     {

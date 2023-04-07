@@ -22,13 +22,14 @@ public class RegionalPath
     public RegionalPathfindingAnalysis regionalPathfindingAnalysis;
     public Dictionary<int, int> regionDirections;
     public Dictionary<int, int> gatewayDirections;
+    public List<RegionGateway> gatewayPath;
     public List<Vector2> finalPath;
     public Coord goalCoord;
 
     public RegionalPath(RegionalPathfindingAnalysis regionalPathfindingAnalysis, Vector2 start, Vector2 goal)
     {
         this.regionalPathfindingAnalysis = regionalPathfindingAnalysis;
-        (regionDirections, gatewayDirections, finalPath) = RegionalPathfinding.ConstructRegionalPath(regionalPathfindingAnalysis, start, goal, RegionalPathfinding.SimpleRegionalHeuristic);
+        (regionDirections, gatewayDirections, gatewayPath, finalPath) = RegionalPathfinding.ConstructRegionalPath(regionalPathfindingAnalysis, start, goal, RegionalPathfinding.SimpleRegionalHeuristic);
         goalCoord = Coord.CoordFromPosition(goal);
     }
 

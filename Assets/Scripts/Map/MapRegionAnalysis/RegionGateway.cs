@@ -15,7 +15,9 @@ public class RegionGateway
     public Vector2 regionADirection;
     public Vector2 regionBDirection;
 
-    public RegionGateway(Coord start, Coord end, MapRegion regionA, MapRegion regionB, int ID)
+    private bool smallerSize;
+
+    public RegionGateway(Coord start, Coord end, MapRegion regionA, MapRegion regionB, int ID, bool smallerSize = false)
     {
         this.start = start;
         this.end = end;
@@ -36,6 +38,9 @@ public class RegionGateway
 
     public float GetSize()
     {
+        if (smallerSize) {
+            return gateTilesCoords.Count - 1;
+        }
         return gateTilesCoords.Count;
     }
 }

@@ -1,28 +1,19 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using UnityEditor;
 using UnityEngine;
-using UnityEngine.Analytics;
-using UnityEngine.Diagnostics;
-using UnityEngine.EventSystems;
-using UnityEngine.UIElements;
-using static UnityEditor.Experimental.AssetDatabaseExperimental.AssetDatabaseCounters;
-using static UnityEngine.GraphicsBuffer;
-using static UnityEngine.RuleTile.TilingRuleOutput;
 
 public class PathExecutor
 {
     private Unit unit;
     private int steeringTargetIndex;
-    private Vector2 previousSteeringTarget;
-    private Vector2 steeringTarget;
+    public Vector2 previousSteeringTarget;
+    public Vector2 steeringTarget;
     private List<Vector2> path;
 
     private float targetUpdatePeriod = 2.0f;
-    private float targetUpdateTime = float.MaxValue;
+    private float targetUpdateTime;
 
     private int targetLastSeenCounter = 0;
     private const int recalculatePathThreshold = 5;
@@ -31,13 +22,18 @@ public class PathExecutor
     {
         this.unit = unit;
         this.path = path;
+        targetUpdateTime = targetUpdatePeriod * 2;
         previousSteeringTarget = unit.position;
+        steeringTarget = unit.position;
     }
 
     public PathExecutor(Unit unit, Stack<Vector2> path)
     {
         this.unit = unit;
         this.path = path.ToList();
+        targetUpdateTime = targetUpdatePeriod * 2;
+        previousSteeringTarget = unit.position;
+        steeringTarget = unit.position;
     }
 
     public Vector2 GetPathFollowingForce()
@@ -45,7 +41,6 @@ public class PathExecutor
         int furthestVisiblePathIndex = getFurthestVisiblePathIndex();
         steeringTargetIndex = furthestVisiblePathIndex;
         steeringTarget = path[steeringTargetIndex];
-        //Debug.Log(steeringTargetIndex);
         float factor = Mathf.Clamp01(targetUpdateTime * 2);
         Vector2 result = (factor * steeringTarget + (1.0f - factor) * previousSteeringTarget) - unit.position;
         return result.normalized;

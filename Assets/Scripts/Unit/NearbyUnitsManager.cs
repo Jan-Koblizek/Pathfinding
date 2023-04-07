@@ -40,9 +40,12 @@ public class NearbyUnitsManager
         var overallAvoidanceForce = Vector2.zero;
         foreach (Unit unit in nearbyUnits)
         {
-            Vector2 avoidanceForce = GetVelocitySteeringFromAnotherUnit(unit);
-            //Vector2 avoidanceForce = GetSteeringFromAnotherUnit(unit);
-            overallAvoidanceForce += avoidanceForce;
+            if (Vector2.Distance(this.unit.position, unit.position) < 1.6f * 2 * SimulationSettings.UnitRadius)
+            {
+                Vector2 avoidanceForce = GetVelocitySteeringFromAnotherUnit(unit);
+                //Vector2 avoidanceForce = GetSteeringFromAnotherUnit(unit);
+                overallAvoidanceForce += avoidanceForce;
+            }
         }
         return overallAvoidanceForce.LimitMagnitude(SimulationSettings.instance.MaxForce);
     }
@@ -52,7 +55,7 @@ public class NearbyUnitsManager
         var collidingRadius = 2 * SimulationSettings.UnitRadius;
         collidingRadius *= 1;
         var relativePosition = this.unit.position - otherUnit.position;
-        var relativeVelocity = this.unit.position - otherUnit.position;
+        var relativeVelocity = this.unit.desiredVelocity - otherUnit.desiredVelocity;
 
         var possibleCollisionAtStep = relativePosition.magnitude / relativeVelocity.magnitude;
 
@@ -98,8 +101,8 @@ public class NearbyUnitsManager
 
         var intersectionDistance = intersection.x == 0 ? intersection.y : intersection.x;
         size = intersectionDistance > 0 ? collidingRadius - intersectionDistance : collidingRadius + intersectionDistance;
-        Debug.Assert(Mathf.Abs(intersectionDistance) <= collidingRadius * 1.5f);
-
+        //Debug.Assert(Mathf.Abs(intersectionDistance) <= collidingRadius * 1.5f);
+        //if (Mathf.Abs(intersectionDistance) > collidingRadius * 1.5f) Debug.Log(intersectionDistance);
         if (intersection == verticalIntersection)
         {
             if (relativeVelocity.x * verticalIntersection.y < 0)

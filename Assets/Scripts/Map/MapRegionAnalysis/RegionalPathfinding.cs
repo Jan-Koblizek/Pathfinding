@@ -7,7 +7,7 @@ using static UnityEngine.RuleTile.TilingRuleOutput;
 
 public static class RegionalPathfinding
 {
-    public static (Dictionary<int, int> regionDirections, Dictionary<int, int> gatewayDirections, List<Vector2> finalPath) ConstructRegionalPath(RegionalPathfindingAnalysis regionalPathfindingAnalysis, Vector2 start, Vector2 goal, System.Func<RegionGateway, Coord, RegionalPathfindingAnalysis, float> heuristic)
+    public static (Dictionary<int, int> regionDirections, Dictionary<int, int> gatewayDirections, List<RegionGateway> gatewayPath, List<Vector2> finalPath) ConstructRegionalPath(RegionalPathfindingAnalysis regionalPathfindingAnalysis, Vector2 start, Vector2 goal, System.Func<RegionGateway, Coord, RegionalPathfindingAnalysis, float> heuristic)
     {
         Coord startCoord = Coord.CoordFromPosition(start);
         Coord goalCoord = Coord.CoordFromPosition(goal);
@@ -22,7 +22,7 @@ public static class RegionalPathfinding
         if (startRegion == goalRegion)
         {
             List<Vector2> path = Pathfinding.ConstructPathAStar(start, goal, Pathfinding.StepDistance, 0.2f).ToList();
-            return (new Dictionary<int, int>(), new Dictionary<int, int>(), path);
+            return (new Dictionary<int, int>(), new Dictionary<int, int>(), new List<RegionGateway>(), path);
         }
 
         for (int i = 0; i < startRegion.gateways.Count; i++)
@@ -80,7 +80,7 @@ public static class RegionalPathfinding
         }
         else
         {
-            return (null, null, null);
+            return (null, null, null, null);
         }
 
         Coord finalGatewayCentralCoord = finalGateway.gateTilesCoords[finalGateway.gateTilesCoords.Count / 2];
@@ -107,7 +107,7 @@ public static class RegionalPathfinding
             regionDirectionDictionary[regionPath[i].ID] = targetGatewayIndex;
             gatewayDirectionDictionary[gatewayList[i].ID] = gatewayIndex;
         }
-        return (regionDirectionDictionary, gatewayDirectionDictionary, finalPath);
+        return (regionDirectionDictionary, gatewayDirectionDictionary, gatewayList, finalPath);
     }
 
     public static float ComplexDistanceBetween(RegionGateway gateway, Coord goal, RegionalPathfindingAnalysis pathfindingAnalysis)

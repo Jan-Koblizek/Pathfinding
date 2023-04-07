@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -36,7 +37,7 @@ public class UnitMovementManager : MonoBehaviour
                 break;
             case MovementMode.RegionalFlowGraph:
                 FlowGraph flowGraph2 = new FlowGraph(Simulator.Instance.partialFlowGraph, start, target, Simulator.Instance.decomposition.regionMap);
-                RegionalFlowGraphPlanning.StartNewFlowGraphPlanWarmUp(flowGraph2, units);
+                RegionalFlowGraphPlanning.StartNewFlowGraphPlanWarmUp(flowGraph2, units.ToHashSet());
                 break;
 
         }
@@ -130,7 +131,7 @@ public class UnitMovementManager : MonoBehaviour
             case MovementMode.RegionalFlowGraph:
                 pathfindingStopWatch.Start();
                 FlowGraph flowGraph2 = new FlowGraph(Simulator.Instance.partialFlowGraph, units[0].position, Simulator.Instance.target.Center, Simulator.Instance.decomposition.regionMap);
-                RegionalFlowGraphPlanning.StartNewFlowGraphPlan(flowGraph2, units);
+                RegionalFlowGraphPlanning.StartNewFlowGraphPlan(flowGraph2, units.ToHashSet());
                 pathfindingStopWatch.Stop();
                 break;
         }

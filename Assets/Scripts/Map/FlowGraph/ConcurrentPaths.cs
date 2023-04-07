@@ -695,7 +695,7 @@ internal class ConcurrentPaths
             {
                 return 0;
             }
-            var result = finishedSteps * Flow;
+            var result = finishedSteps * Flow * SimulationSettings.instance.UnitSpeed;
             return result;
         }
 
@@ -713,7 +713,7 @@ internal class ConcurrentPaths
             }
 
             var remainingVolume = flowVolume - InitialArrivals;
-            var result = remainingVolume / Flow + Cost;
+            var result = remainingVolume / (Flow * SimulationSettings.instance.UnitSpeed) + Cost;
 
             return result;
         }
@@ -760,7 +760,7 @@ internal class ConcurrentPaths
             return 0;
         }
 
-        var result = finishedSteps * path.Flow;
+        var result = finishedSteps * path.Flow * SimulationSettings.instance.UnitSpeed;
         return (int)Math.Floor(result);
     }
 
