@@ -31,4 +31,6 @@ public class RegionalPath
         (regionDirections, gatewayDirections, finalPath) = RegionalPathfinding.ConstructRegionalPath(regionalPathfindingAnalysis, start, goal, RegionalPathfinding.SimpleRegionalHeuristic);
         goalCoord = Coord.CoordFromPosition(goal);
     }
+
+    public RegionalPath() { }
 }

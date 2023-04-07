@@ -8,9 +8,9 @@ using utils;
 
 public class FlowGraph
 {
-    public FlowEdge[] Edges;
-    public FlowNode[] GateNodes;
-    public FlowNode[] ZoneNodes;
+    public List<FlowEdge> Edges;
+    public List<FlowNode> GateNodes;
+    public List<FlowNode> ZoneNodes;
 
     public Dictionary<FlowNode, HashSet<FlowEdge>> NodeToEdges; //graph representation 
 
@@ -109,6 +109,67 @@ public class FlowGraph
         }
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public FlowGraph(PartialFlowGraph partialFlowGraph, Vector2 source, Vector2 goal, int[,] regionalMap)
+    {
+        Coord sourceCoord = Coord.CoordFromPosition(source);
+        int sourceZone = regionalMap[sourceCoord.X, sourceCoord.Y];
+        Coord goalCoord = Coord.CoordFromPosition(goal);
+        int goalZone = regionalMap[goalCoord.X, goalCoord.Y];
+        Source = new FlowNode(source, sourceZone);
+        Terminal = new FlowNode(goal, goalZone);
+
+        Edges = partialFlowGraph.Edges;
+        ZoneNodes = new List<FlowNode>();
+        GateNodes = new List<FlowNode>();
+        ZoneNodes.AddRange(partialFlowGraph.Nodes);
+        NodeToEdges = partialFlowGraph.NodeToEdges;
+        ZoneNodes.Add(Source);
+        ZoneNodes.Add(Terminal);
+        _idToNodes = partialFlowGraph._idToNodes;
+        _idToNodes.Add(Source.Id, Source);
+        _idToNodes.Add(Terminal.Id, Terminal);
+        _idToEdges = partialFlowGraph._idToEdges;
+        _nodesIdsToEdgeIdCost = partialFlowGraph._nodesIdsToEdgeIdCost;
+
+        NodeToEdges[Source] = new HashSet<FlowEdge>();
+        NodeToEdges[Terminal] = new HashSet<FlowEdge>();
+        HashSet<FlowNode> SourceZoneNodes = partialFlowGraph.zoneToNodes[sourceZone];
+
+        HashSet<FlowNode> TerminalZoneNodes = partialFlowGraph.zoneToNodes[goalZone];
+        foreach (FlowEdge edge in Edges) edge.Flow = 0;
+
+        foreach (FlowNode node in TerminalZoneNodes)
+        {
+            //Specify length to speed up initialization
+            FlowEdge edge = new FlowEdge(Terminal, node, Vector2.Distance(source, node.Center.GetWorldPosition()), float.MaxValue);
+            Edges.Add(edge);
+            _idToEdges.Add(edge.Id, edge);
+            (int, int) key = (Terminal.Id, node.Id);
+            (int, int) opposite = (node.Id, Terminal.Id);
+            (int, float) value = (edge.Id, edge.EdgeLength);
+            _nodesIdsToEdgeIdCost[key] = value;
+            _nodesIdsToEdgeIdCost[opposite] = value;
+            NodeToEdges[Terminal].Add(edge);
+            NodeToEdges[node].Add(edge);
+        }
+
+        foreach (FlowNode node in SourceZoneNodes)
+        {
+            //Specify length to speed up initialization
+            FlowEdge edge = new FlowEdge(Source, node, Vector2.Distance(source, node.Center.GetWorldPosition()), float.MaxValue);
+            Edges.Add(edge);
+            _idToEdges.Add(edge.Id, edge);
+            (int, int) key = (Source.Id, node.Id);
+            (int, int) opposite = (node.Id, Source.Id);
+            (int, float) value = (edge.Id, edge.EdgeLength);
+            _nodesIdsToEdgeIdCost[key] = value;
+            _nodesIdsToEdgeIdCost[opposite] = value;
+            NodeToEdges[Source].Add(edge);
+            NodeToEdges[node].Add(edge);
+        }
+    }
+
     private FlowGraph(
     Dictionary<FlowNode, HashSet<FlowEdge>> nodeToEdges,
     List<FlowEdge> edges,
@@ -120,9 +181,9 @@ public class FlowGraph
         Terminal = terminal;
         Source = source;
 
-        Edges = edges.ToArray();
-        GateNodes = gate.ToArray();
-        ZoneNodes = zone.ToArray();
+        Edges = edges;
+        GateNodes = gate;
+        ZoneNodes = zone;
 
         NodeToEdges = nodeToEdges;
 
@@ -138,7 +199,7 @@ public class FlowGraph
             _idToEdges.Add(edge.Id, edge);
         }
 
-        _nodesIdsToEdgeIdCost = new Dictionary<(int, int), (int, float)>(Edges.Length * 2);
+        _nodesIdsToEdgeIdCost = new Dictionary<(int, int), (int, float)>(Edges.Count * 2);
         foreach (FlowEdge edge in Edges)
         {
             (int, int) key = (edge.Start.Id, edge.End.Id);
@@ -252,8 +313,8 @@ public class FlowGraph
     /// <returns></returns>
     private static (FlowNode source, FlowNode sink) ConnectSourceTerminal(Vector2? group, Vector2? target, Dictionary<FlowNode, HashSet<FlowEdge>> nodeToEdges, Dictionary<int, HashSet<FlowNode>> zoneToNodes, ref RegionalDecomposition decomposition)
     {
-        FlowNode source = null;
-        FlowNode sink = null;
+        FlowNode source = new FlowNode(Vector2.zero, -1);
+        FlowNode sink = new FlowNode(Vector2.zero, -1);
 
         if (group != null)
         {
@@ -277,7 +338,7 @@ public class FlowGraph
         IDictionary<FlowNode, HashSet<FlowEdge>> nodeToEdges,
         int zoneID)
     {
-        FlowNode significantNode = new FlowNode(position); //sets the size of source, terminal graph circle
+        FlowNode significantNode = new FlowNode(position, zoneID); //sets the size of source, terminal graph circle
         Utilities.AddToHashsetDictionary(zoneToNodes, zoneID, significantNode);
 
         return significantNode;
@@ -339,8 +400,8 @@ public class FlowGraph
 
             Vector2 center = choke.GetCentralPosition();
             Vector2 norm = GetPerpendicularVectorToGate(choke);
-            FlowNode a = new FlowNode(choke, center + norm);
-            FlowNode b = new FlowNode(choke, center - norm);
+            FlowNode a = new FlowNode(choke, center + norm, choke.regionA.ID);
+            FlowNode b = new FlowNode(choke, center - norm, choke.regionB.ID);
 
             int aZone = 0, bZone = 0;
 

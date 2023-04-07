@@ -19,6 +19,7 @@ public class Unit : MonoBehaviour
 
     public Vector2 position;
     public Vector2 velocity;
+    public Vector2 desiredVelocity;
     protected float time = 0;
     [HideInInspector]
     public Vector2 moveDirection;
@@ -47,7 +48,8 @@ public class Unit : MonoBehaviour
     private void ApplyForce(Vector2 force)
     {
         force = force.LimitMagnitude(SimulationSettings.instance.MaxForce);
-        Vector2 desiredVelocity = (1.0f - 20 * Time.deltaTime) * velocity + force;
+        float factor = Mathf.Clamp01(1.0f - 50 * Time.deltaTime);
+        Vector2 desiredVelocity = factor * velocity + (1.0f - factor) * force;
         //velocity = limitRotation(desiredVelocity);
         velocity = desiredVelocity.LimitMagnitude(SimulationSettings.instance.UnitSpeed);
     }
@@ -109,12 +111,14 @@ public class Unit : MonoBehaviour
                 seek = Vector2.zero;
                 break;
         }
+        desiredVelocity = 5.0f * seek;
+
         var combination =
-            1.0f * seek +
-            50.0f * separation +
-            10.0f * wallRepulsionForce +
-            5.0f * wallTurningForce +
-            1.0f * unitTurningForce +
+            5.0f * seek +
+            30.0f * separation +
+            50.0f * wallRepulsionForce +
+            10.0f * wallTurningForce +
+            2.0f * unitTurningForce +
             0.5f * alignment;
 
         return combination.LimitMagnitude(SimulationSettings.instance.MaxForce);

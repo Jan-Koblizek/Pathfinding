@@ -582,11 +582,13 @@ public static class Pathfinding
     /// <returns></returns>
     public static List<int> FlowGraphPath(FlowGraph flowGraph, List<int> origin, List<int> goal)
     {
+        System.Diagnostics.Stopwatch stopwatch = new System.Diagnostics.Stopwatch();
+        stopwatch.Start();
         FlowGraphInitializeStructuresForSearch(origin, goal, ref flowGraph,
             out PriorityQueue<float, int?> openNodes,
             out Dictionary<int?, AStarSearchNodeFlowGraph> visitedNodes,
             out HashSet<int> goals);
-
+        stopwatch.Stop();
         bool firstTimeAssert = true;
         while (openNodes.Count() > 0)
         {
@@ -660,7 +662,7 @@ public static class Pathfinding
 
         foreach (int startPoint in origin)
         {
-            queue.Enqueue(startPoint, 0);
+            queue.Enqueue(0, startPoint);
             AStarSearchNodeFlowGraph node = new AStarSearchNodeFlowGraph
             {
                 DistanceFromStart = 0,

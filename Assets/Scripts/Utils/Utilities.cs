@@ -15,4 +15,18 @@ public static class Utilities
             dictionary[key] = new HashSet<TValue>() { value };
         }
     }
+
+    public static float Modulo2Pi(float angle)
+    {
+        //optimized to answer quickly for values that won't change
+        var pi = Mathf.PI * 2f;
+        var a = angle;
+        return 0 <= a && a < pi ?
+            a :
+            ((a %= pi) < 0) ?
+                a + pi :
+                a;
+    }
+
+
 }

@@ -40,30 +40,99 @@ public class NearbyUnitsManager
         var overallAvoidanceForce = Vector2.zero;
         foreach (Unit unit in nearbyUnits)
         {
-            Vector2 avoidanceForce = GetSteeringFromAnotherUnit(unit);
+            Vector2 avoidanceForce = GetVelocitySteeringFromAnotherUnit(unit);
+            //Vector2 avoidanceForce = GetSteeringFromAnotherUnit(unit);
             overallAvoidanceForce += avoidanceForce;
         }
         return overallAvoidanceForce.LimitMagnitude(SimulationSettings.instance.MaxForce);
     }
 
+    private Vector2 GetVelocitySteeringFromAnotherUnit(Unit otherUnit)
+    {
+        var collidingRadius = 2 * SimulationSettings.UnitRadius;
+        collidingRadius *= 1;
+        var relativePosition = this.unit.position - otherUnit.position;
+        var relativeVelocity = this.unit.position - otherUnit.position;
+
+        var possibleCollisionAtStep = relativePosition.magnitude / relativeVelocity.magnitude;
+
+        //if (possibleCollisionAtStep > LOOKAHEAD)
+        //    return Vector2.Zero;
+
+        if (Geometry.CircleIntersectsRay(relativePosition, relativePosition + relativeVelocity, collidingRadius))
+        {
+            float angle = Utilities.Modulo2Pi(relativeVelocity.ToAngle() - Mathf.PI / 2);
+            if (angle == 0)
+            {
+                angle = Random.Range(1.0f, -1.0f) * 0.001f;
+            }
+
+            var normal = GetVelocityAvoidanceDirectionVector(relativePosition, angle, collidingRadius, relativeVelocity, out float size);
+            return normal;
+        }
+        else
+        {
+            return Vector2.zero;
+        }
+    }
+
+    /// <summary>
+    /// Computes the turn vector to avoid collision in ORCA (does not handle same direction approach of different speed moving object)
+    /// </summary>
+    /// <param name="relativePosition"></param>
+    /// <param name="angle"></param>
+    /// <param name="collidingRadius"></param>
+    /// <param name="relativeVelocity"></param>
+    /// <param name="size">how much steering is necessary</param>   
+    /// <returns></returns>
+    private Vector2 GetVelocityAvoidanceDirectionVector(Vector2 relativePosition, float angle, float collidingRadius, Vector2 relativeVelocity, out float size)
+    {
+        var horizontalIntersection = Geometry.GetHorizontalIntersection(relativePosition, angle, 0);
+        var verticalIntersection = Geometry.GetVerticalIntersection(relativePosition, angle, 0);
+
+        var intersection = Mathf.Abs(horizontalIntersection.x) < Mathf.Abs(verticalIntersection.y)
+                    ? horizontalIntersection
+                    : verticalIntersection;
+
+        //DebugOutput.WriteLine($"[{ID} (vs{unit.ID})] rv:{relativeVelocity}, rp:{relativePosition}, inters: h:{horizontalIntersection.X}, v:{verticalIntersection.Y}");
+
+        var intersectionDistance = intersection.x == 0 ? intersection.y : intersection.x;
+        size = intersectionDistance > 0 ? collidingRadius - intersectionDistance : collidingRadius + intersectionDistance;
+        Debug.Assert(Mathf.Abs(intersectionDistance) <= collidingRadius * 1.5f);
+
+        if (intersection == verticalIntersection)
+        {
+            if (relativeVelocity.x * verticalIntersection.y < 0)
+                return relativeVelocity.PerpendicularClockwise();
+            return relativeVelocity.PerpendicularCounterClockwise();
+        }
+        else
+        {
+            if (relativeVelocity.y * horizontalIntersection.x > 0)
+                return relativeVelocity.PerpendicularClockwise();
+            return relativeVelocity.PerpendicularCounterClockwise();
+        }
+    }
+
     private Vector2 GetSteeringFromAnotherUnit(Unit otherUnit)
     {
         Vector2 relativePosition = unit.position - otherUnit.position;
-        Vector2 relativeVelocity = unit.velocity - otherUnit.velocity;
-        float timeToCollision = relativePosition.magnitude / relativeVelocity.magnitude;
-        relativePosition.Normalize();
-        relativeVelocity.Normalize();
+        Vector2 relativeVelocity = unit.desiredVelocity - otherUnit.desiredVelocity;
+        float timeToCollision = (relativePosition.magnitude - 2*SimulationSettings.UnitRadius) / relativeVelocity.magnitude;
+        //Debug.Log($"angle1 {Vector2.SignedAngle(relativePosition, relativeVelocity)}, angle2 {Vector2.SignedAngle(relativePosition, relativeVelocity)}");
 
-        if (Geometry.CircleLineIntersection(relativePosition, relativePosition + relativeVelocity, 2*SimulationSettings.UnitRadius))
+        if (Geometry.CircleIntersectsRay(relativePosition, relativePosition + 2 * relativeVelocity, 2*SimulationSettings.UnitRadius))
         {
+            relativePosition.Normalize();
+            relativeVelocity.Normalize();
             Vector2 direction;
             if (Vector2.SignedAngle(relativePosition, relativeVelocity) > 0)
             {
-                direction = relativePosition.Rotate(-90);
+                direction = relativePosition.Rotate(90);
             }
             else
             {
-                direction = relativePosition.Rotate(90);
+                direction = relativePosition.Rotate(-90);
             }
             return direction / timeToCollision;
         }
@@ -96,15 +165,15 @@ public class NearbyUnitsManager
         if (distanceBounds <= 0) return maxForce;
 
         Vector2 repulsiveForce;
-        if (distance != 0) repulsiveForce = maxForce * SeparationForceCalculator(distance / 1.2f);
+        if (distance != 0) repulsiveForce = maxForce * SeparationForceCalculator(distanceBounds / 1.0f);
         else throw new UnitsOverEachOtherException("Units occupy the same position - this should not happen");
         return repulsiveForce.LimitMagnitude(SimulationSettings.instance.MaxForce);
     }
 
     private float SeparationForceCalculator(float boundsDistance)
     {
-        float factor = Mathf.Clamp01(1 - boundsDistance);
-        return factor * factor;
+        float factor = Mathf.Clamp01(1.0f - boundsDistance);
+        return factor * factor * factor;
     }
 
     private Vector2 getAlignmentForce()

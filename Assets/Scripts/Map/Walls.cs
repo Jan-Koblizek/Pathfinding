@@ -56,7 +56,7 @@ public class Walls
             return Vector2.zero;
         }
         Vector2 wallRepulsionForce = Vector2.zero;
-        Vector2 initDirection = Random.rotation * Vector2.right;
+        Vector2 initDirection = Vector2.right;
 
         foreach (var (angle, length) in obstacleRepulsionRays)
         {
@@ -70,7 +70,7 @@ public class Walls
             }
 
             float distanceFactor = (length - hitDistance) / length;       
-            Vector2 repulsionForce = -rayDirection * distanceFactor * distanceFactor * 2;
+            Vector2 repulsionForce = -rayDirection * distanceFactor * distanceFactor * distanceFactor;
 
             wallRepulsionForce += repulsionForce;
         }
@@ -214,8 +214,8 @@ public class Walls
     private List<(float angle, float length)> obstacleRepulsionRays = new();
 
     private void InitializeObstacleRepulsionRays() {
-        List<float> angles = new List<float> { 0, 90, -90, 180 };
-        List<float> lengths = new List<float> { 2.0f, 2.0f, 2.0f, 2.0f};
+        List<float> angles = new List<float> { 0, 45, 90, 135, -45, -90, -135, 180 };
+        List<float> lengths = new List<float> { 3.0f, 3.0f, 3.0f, 3.0f, 3.0f, 3.0f, 3.0f, 3.0f};
         for (int i = 0; i < Mathf.Min(angles.Count, lengths.Count); i++)
         {
             obstacleRepulsionRays.Add((angles[i], lengths[i]));
@@ -227,7 +227,7 @@ public class Walls
     private void InitializeObstacleTurningRays()
     {
         List<float> angles = new List<float> { 10, -10 };
-        List<float> lengths = new List<float> { 5.0f, 5.0f };
+        List<float> lengths = new List<float> { 7.0f, 7.0f };
         for (int i = 0; i < Mathf.Min(angles.Count, lengths.Count); i++)
         {
             obstacleTurningRays.Add((angles[i], lengths[i]));

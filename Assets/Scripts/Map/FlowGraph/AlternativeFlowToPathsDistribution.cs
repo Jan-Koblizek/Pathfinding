@@ -34,11 +34,10 @@ class AlternativeFlowToPathsDistribution
 
     internal List<ConcurrentPaths> Finish(AlternativeFlowToPathsDistribution completed)
     {
-        foreach (var concurrentPath in _alternatives)
+        foreach (ConcurrentPaths concurrentPath in _alternatives)
         {
             concurrentPath.Merge();
         }
-
         completed._alternatives.AddRange(_alternatives);
         return completed._alternatives;
     }

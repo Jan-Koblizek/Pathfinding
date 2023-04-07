@@ -17,10 +17,11 @@ public class PathExecutor
 {
     private Unit unit;
     private int steeringTargetIndex;
+    private Vector2 previousSteeringTarget;
     private Vector2 steeringTarget;
     private List<Vector2> path;
 
-    private float targetUpdatePeriod = 1.0f;
+    private float targetUpdatePeriod = 2.0f;
     private float targetUpdateTime = float.MaxValue;
 
     private int targetLastSeenCounter = 0;
@@ -30,6 +31,7 @@ public class PathExecutor
     {
         this.unit = unit;
         this.path = path;
+        previousSteeringTarget = unit.position;
     }
 
     public PathExecutor(Unit unit, Stack<Vector2> path)
@@ -44,8 +46,8 @@ public class PathExecutor
         steeringTargetIndex = furthestVisiblePathIndex;
         steeringTarget = path[steeringTargetIndex];
         //Debug.Log(steeringTargetIndex);
-        Vector2 result = steeringTarget - unit.position;
-        //Debug.Log(result.normalized);
+        float factor = Mathf.Clamp01(targetUpdateTime * 2);
+        Vector2 result = (factor * steeringTarget + (1.0f - factor) * previousSteeringTarget) - unit.position;
         return result.normalized;
     }
 
@@ -56,7 +58,7 @@ public class PathExecutor
         {
             return steeringTargetIndex;
         }
-
+        previousSteeringTarget = steeringTarget;
         int i;
         int pathIndex;
         if (Map.instance.walls.pathClearBetweenPositions(unit.position, path[steeringTargetIndex]))
@@ -131,6 +133,7 @@ public class PathExecutor
     {
         targetLastSeenCounter++;
         if (targetLastSeenCounter <= recalculatePathThreshold) return;
+        Debug.Log("Recalculate");
         path = Pathfinding.ConstructPathAStar(unit.position, path[path.Count - 1], Pathfinding.StepDistance, 0.2f).ToList();
     }
 }

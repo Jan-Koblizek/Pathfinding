@@ -12,18 +12,27 @@ public class Simulator : MonoBehaviour
     public GameObject unitPrefab;
     public MovementMode movementMode;
 
+    [SerializeField]
+    public List<Vector2> warmUpStartPositions;
+    public List<Vector2> warmUpTargetPositions;
+
     private float simulationTime;
     private int unitsReachedTarget;
     private int numberOfUnits;
+    [HideInInspector]
     public bool simulationStarted = false;
+    [HideInInspector]
     public bool simulationFinished = false;
     private WaterDecomposition waterDecomposition;
     [HideInInspector]
     public RegionalDecomposition decomposition;
     [HideInInspector]
     public RegionalPathfindingAnalysis regionalPathfinding;
+    [HideInInspector]
+    public PartialFlowGraph partialFlowGraph;
 
     float secondTimer = 1.0f;
+    private bool halfFinished = false;
 
     private void Start()
     {
@@ -53,10 +62,25 @@ public class Simulator : MonoBehaviour
     public void UnitReachedTarget()
     {
         unitsReachedTarget++;
+        if (!halfFinished && unitsReachedTarget >= numberOfUnits / 2) {
+            Debug.Log($"Half of the units arrived: {simulationTime}s");
+            halfFinished = true;
+        }
         if (unitsReachedTarget == numberOfUnits)
         {
             Debug.Log($"Simulation Finished: {simulationTime}s");
             simulationFinished = true;
+        }
+    }
+
+    public void StartWarmUp()
+    {
+        for (int i = 0; i < warmUpStartPositions.Count; i++)
+        {
+            for (int j = 0; j < warmUpTargetPositions.Count; j++)
+            {
+                unitMovementManager.StartWarmUp(movementMode, warmUpStartPositions[i], warmUpTargetPositions[j]);
+            }
         }
     }
 
@@ -83,11 +107,19 @@ public class Simulator : MonoBehaviour
                 List<(Vector2 flowDirection, float distanceToGate)[,]> flowMaps = MapRegionPathfinding.CreateFlowMaps(decomposition);
                 Dictionary<RegionGateway, Dictionary<RegionGateway, float>> distances = MapRegionPathfinding.DistancesBetweenGates(decomposition);
                 regionalPathfinding = new RegionalPathfindingAnalysis(decomposition, flowMaps, distances);
-                Debug.Log(regionalPathfinding);
                 break;
             case MovementMode.FlowGraph:
                 waterDecomposition = new WaterDecomposition();
                 decomposition = waterDecomposition.Decompose(Map.instance.tiles, -1);
+                partialFlowGraph = PartialFlowGraph.PartialFlowGraphFromDecomposition(decomposition);
+                break;
+            case MovementMode.RegionalFlowGraph:
+                waterDecomposition = new WaterDecomposition();
+                decomposition = waterDecomposition.Decompose(Map.instance.tiles, -1);
+                List<(Vector2 flowDirection, float distanceToGate)[,]> flowMaps2 = MapRegionPathfinding.CreateFlowMaps(decomposition);
+                Dictionary<RegionGateway, Dictionary<RegionGateway, float>> distances2 = MapRegionPathfinding.DistancesBetweenGates(decomposition);
+                regionalPathfinding = new RegionalPathfindingAnalysis(decomposition, flowMaps2, distances2);
+                partialFlowGraph = PartialFlowGraph.PartialFlowGraphFromDecomposition(decomposition);
                 break;
             default:
                 break;
@@ -147,5 +179,6 @@ public enum MovementMode
     PathFollowingLowerNumberOfPaths,
     SupremeCommanderFlowField,
     RegionalPath,
-    FlowGraph
+    FlowGraph,
+    RegionalFlowGraph
 }

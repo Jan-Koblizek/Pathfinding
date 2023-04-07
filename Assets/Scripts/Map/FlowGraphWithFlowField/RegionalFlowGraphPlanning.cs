@@ -1,15 +1,12 @@
 using System.Collections;
 using System.Collections.Generic;
-using System.Runtime.CompilerServices;
 using UnityEngine;
 
-public class FlowGraphPlanning
+public class RegionalFlowGraphPlanning
 {
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void StartNewFlowGraphPlan(FlowGraph flowGraph, List<Unit> units)
     {
         System.Diagnostics.Stopwatch stopwatch = new System.Diagnostics.Stopwatch();
-        stopwatch.Start();
         FlowPaths flowPaths = new FlowPaths();
         List<int> source = new List<int>() { flowGraph.Source.Id };
         List<int> terminal = new List<int>() { flowGraph.Terminal.Id };
@@ -25,19 +22,15 @@ public class FlowGraphPlanning
         }
 
         List<ConcurrentPaths> concurrentPaths = flowPaths.Finish();
-        List<UnitPathAssignmentFlowGraph> distribution = FlowPaths.AssignUnitCountsToConcurrentPaths(concurrentPaths, units.Count, flowGraph);
-        
-        stopwatch.Stop();
-        Debug.Log($"Pathfinding Part Took {stopwatch.ElapsedMilliseconds}ms");
-        stopwatch.Restart();
-        UnitPathAssignmentFlowGraph.AssignUnitPathsHeuristic(distribution, false);
-        stopwatch.Stop();
-        Debug.Log($"Unit Assignment Took {stopwatch.ElapsedMilliseconds}ms");
+
+        List<UnitPathAssignmentRegionalFlowGraph> distribution = FlowPaths.AssignUnitCountsToConcurrentPathsRegional(concurrentPaths, units.Count, flowGraph);
+
+        UnitPathAssignmentRegionalFlowGraph.AssignUnitPathsHeuristic(distribution, false);
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void StartNewFlowGraphPlanWarmUp(FlowGraph flowGraph, List<Unit> units)
     {
+        System.Diagnostics.Stopwatch stopwatch = new System.Diagnostics.Stopwatch();
         FlowPaths flowPaths = new FlowPaths();
         List<int> source = new List<int>() { flowGraph.Source.Id };
         List<int> terminal = new List<int>() { flowGraph.Terminal.Id };
@@ -53,7 +46,9 @@ public class FlowGraphPlanning
         }
 
         List<ConcurrentPaths> concurrentPaths = flowPaths.Finish();
-        List<UnitPathAssignmentFlowGraph> distribution = FlowPaths.AssignUnitCountsToConcurrentPaths(concurrentPaths, units.Count, flowGraph);
-        UnitPathAssignmentFlowGraph.AssignUnitPathsHeuristic(distribution, true);
+
+        List<UnitPathAssignmentRegionalFlowGraph> distribution = FlowPaths.AssignUnitCountsToConcurrentPathsRegional(concurrentPaths, units.Count, flowGraph);
+
+        UnitPathAssignmentRegionalFlowGraph.AssignUnitPathsHeuristic(distribution, true);
     }
 }

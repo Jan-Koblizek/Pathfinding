@@ -42,7 +42,7 @@ namespace utils
             return distance1 < distance2 ? point1 : point2;
         }
 
-        public static bool CircleLineIntersection(Vector2 start, Vector2 end, float radius)
+        public static bool CircleIntersectsRay(Vector2 start, Vector2 end, float radius)
         {
             //http://mathworld.wolfram.com/Circle-LineIntersection.html
             Vector2 d = end - start;
@@ -81,6 +81,13 @@ namespace utils
             return v;
         }
 
+        public static Vector2 GetVerticalIntersection(Vector2 origin, float angle, int x)
+        {
+            var (k, q) = GetLineParameters(origin, angle);
+            var v = new Vector2(x, (float)(k * x + q));
+            return v;
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Vector2 GetHorizontalIntersection(double k, double q, int y)
         {
@@ -93,6 +100,21 @@ namespace utils
             var (k, q) = GetLineParameters(origin, direction);
             var v = new Vector2((float)((y - q) / k), y);
             return v;
+        }
+
+        public static Vector2 GetHorizontalIntersection(Vector2 origin, float angle, int y)
+        {
+            var (k, q) = GetLineParameters(origin, angle);
+            var v = new Vector2((float)((y - q) / k), y);
+            return v;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static (double, double) GetLineParameters(Vector2 origin, float angle)
+        {
+            var k = Mathf.Tan(angle);
+            var q = origin.y - k * origin.x;
+            return (k, q);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

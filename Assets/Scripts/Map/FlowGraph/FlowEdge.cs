@@ -33,8 +33,9 @@ public class FlowEdge
 
         EdgeLength = edgeLength;
         DrawWidth = gateWidth;
-        Capacity = gateWidth / 2 * SimulationSettings.UnitRadius + 0.4f; // 2* (Unit radius + small space between units) -> the size expresses how m times unit can fit into it - in future use EdgeCapacity method instead this
+        Capacity = gateWidth / (2 * SimulationSettings.UnitRadius + 0.4f); // 2* (Unit radius + small space between units) -> the size expresses how m times unit can fit into it - in future use EdgeCapacity method instead this
         Id = _globalEdgeIdCounter++;
+        Flow = 0;
     }
 
     /// <summary>

@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using UnityEngine;
 
 namespace utils
@@ -30,6 +31,22 @@ namespace utils
             v.x = (cos * tx) - (sin * ty);
             v.y = (sin * tx) + (cos * ty);
             return v;
+        }
+
+        public static Vector2 PerpendicularClockwise(this Vector2 value)
+        {
+            return new Vector2(value.y, 0f - value.x);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static Vector2 PerpendicularCounterClockwise(this Vector2 value)
+        {
+            return new Vector2(0f - value.y, value.x);
+        }
+
+        public static float ToAngle(this Vector2 value)
+        {
+            return (float)Mathf.Atan2(value.x, 0f - value.y);
         }
     }
 }

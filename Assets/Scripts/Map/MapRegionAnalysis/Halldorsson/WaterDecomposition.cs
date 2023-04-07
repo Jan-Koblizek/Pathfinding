@@ -34,7 +34,6 @@ public class WaterDecomposition
         buildRegionsMap(map, maxDepthUsed, mapWidth, mapHeight, ref depthMap, out regionMap, out mapRegions, out numberOfClusters);
         buildGates(map, mapWidth, mapHeight, ref regionMap, out gateways, ref mapRegions);
         refineGates(map, ref gateways, gateRegionIndex, ref regionMap);
-        gateways = new List<RegionGateway>();
         return new RegionalDecomposition(gateways, mapRegions, depthMap, numberOfClusters, regionMap, map);
     }
 
@@ -418,8 +417,9 @@ public class WaterDecomposition
             Vector2 regionDirection1 = direction.Rotate(90);
             Vector2 regionDirection2 = direction.Rotate(-90);
             Vector2 directionToRegionA = (gate.regionA.centre.GetWorldPosition() - position).normalized;
+            Vector2 directionToRegionB = (gate.regionB.centre.GetWorldPosition() - position).normalized;
 
-            if (Vector2.Angle(regionDirection1, directionToRegionA) < Vector2.Angle(regionDirection2, directionToRegionA))
+            if (Vector2.Angle(regionDirection1, directionToRegionA) < Vector2.Angle(regionDirection1, directionToRegionB))
             {
                 gate.regionADirection = regionDirection1;
                 gate.regionBDirection = regionDirection2;
@@ -457,7 +457,6 @@ public class WaterDecomposition
 
     private void clearRegionAroundTheGate(Vector2 regionDirection, int regionID, int otherRegionID, List<Coord> gateTiles, ref int[,] regionMap)
     {
-        int counter = 0;
         Vector2Int up = new Vector2Int(0, 1);
         Vector2Int down = new Vector2Int(0, -1);
         Vector2Int left = new Vector2Int(-1, 0);
@@ -471,7 +470,8 @@ public class WaterDecomposition
         Queue<Coord> processedCoords = new Queue<Coord>(gateTiles);
         while (processedCoords.Count > 0)
         {
-            if (counter > 10)
+            /*
+            if (counter > 100)
             {
                 Debug.Log($"Coord: X {processedCoords.Peek().X}, Y {processedCoords.Peek().Y}"); 
                 Debug.Log(regionID);
@@ -479,6 +479,7 @@ public class WaterDecomposition
                 break;
             }
             counter++;
+            */
             Coord coord = processedCoords.Dequeue();
             if (regionMap[coord.X, coord.Y] == otherRegionID) 
                 regionMap[coord.X, coord.Y] = regionID;

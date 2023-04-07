@@ -91,16 +91,16 @@ internal class ConcurrentPaths
 
         for (int i = 1; i < _atOnce.Count; i++)
         {
-            var cost0 = PlannerPath.GetPathById(_atOnce[i - 1]).Cost;
-            var cost1 = PlannerPath.GetPathById(_atOnce[i]).Cost;
+            Single cost0 = PlannerPath.GetPathById(_atOnce[i - 1]).Cost;
+            Single cost1 = PlannerPath.GetPathById(_atOnce[i]).Cost;
 
             //cost0 != cost1 (stop of the sequence of same costs)
-            if (Math.Abs(cost0 - cost1) > 0.001f)
+            if (Mathf.Abs(cost0 - cost1) > 0.001f)
             {
-                var count = i - prev;
+                int count = i - prev;
                 if (count > 1)
                 {
-                    var sameCostRange = _atOnce.GetRange(prev, count);
+                    List<PathID> sameCostRange = _atOnce.GetRange(prev, count);
                     sameCostRange.Sort(ComparePathsByRawPath);
                     bool change = MergeSortedPath(sameCostRange);
 
@@ -175,7 +175,11 @@ internal class ConcurrentPaths
                 float flow = PlannerPath.GetPathById(pathID).Flow;
                 if (i++ == notFullMutationPathId)
                 {
+                    //Debug.Log($"Flow {flow}");
+                    //Debug.Log($"Total Flow: {GetTotalFlow(pathsToMutate)}");
+                    //Debug.Log($"Paths To Mutate {pathsToMutate.Count}");
                     flow = negativeFlow - (GetTotalFlow(pathsToMutate) - flow);
+                    //Debug.Log($"Changed flow {flow}");
                 }
 
                 Mutate(alternatingSubPaths, pathID, flow, stack, flowGraph);
@@ -206,7 +210,11 @@ internal class ConcurrentPaths
         var path = PlannerPath.GetPathById(pathID);
         if (path.Flow < flow)
         {
-            throw new Exception($"Error in plan with paths - part of the flow will be lost: {path.Flow - flow} - the difference between {path.Flow} < {flow}");
+            if (flow - path.Flow < 0.000001f) { flow = path.Flow; }
+            else
+            {
+                Debug.LogError($"Error in plan with paths - part of the flow will be lost: {path.Flow - flow} - the difference between {path.Flow} < {flow}");
+            }
         }
 
         if (path.Flow > flow)

@@ -21,7 +21,6 @@ public class FlowPaths
 
         //saturate computes the sub paths
         var alternatingSubPaths = SaturatePath(flowGraph, shortestPath, saturatingFlow);
-
         if (saturatingFlow > 0)
         {
             if (alternatingSubPaths.Count > 1)
@@ -140,6 +139,18 @@ public class FlowPaths
         return GetPathInMap(flowGraph, bestPaths, assignment);
     }
 
+    internal static List<UnitPathAssignmentRegionalFlowGraph> AssignUnitCountsToConcurrentPathsRegional(List<ConcurrentPaths> alternatives, int numberOfUnits, FlowGraph flowGraph)
+    {
+        //select best solution from alternatives
+        var bestPaths = SelectConcurrentPaths(alternatives, numberOfUnits, out int lowerBound);
+
+        //for the best solution find how many units belong to which path
+        var assignment = AssignUnitCountsToPaths(numberOfUnits, bestPaths, lowerBound);
+
+        //return paths with unit counts in map grid coordinates
+        return GetPathInMapRegional(flowGraph, bestPaths, assignment);
+    }
+
     private static List<UnitPathAssignmentFlowGraph> GetPathInMap(FlowGraph flowGraph, ConcurrentPaths bestPaths, List<int> assignment)
     {
         var unitAssignments = new List<UnitPathAssignmentFlowGraph>();
@@ -163,6 +174,31 @@ public class FlowPaths
             }
         }
 
+        return unitAssignments;
+    }
+
+    private static List<UnitPathAssignmentRegionalFlowGraph> GetPathInMapRegional(FlowGraph flowGraph, ConcurrentPaths bestPaths, List<int> assignment)
+    {
+        var unitAssignments = new List<UnitPathAssignmentRegionalFlowGraph>();
+        if (assignment == null)
+        {
+            return unitAssignments;
+        }
+
+        List<PathID> pathIds = new List<PathID>(bestPaths.GetAtOnce());
+
+        for (int j = 0; j < pathIds.Count; j++)
+        {
+            int assignedUnitCount = assignment[j];
+            if (assignedUnitCount != 0)
+            {
+                var pathID = pathIds[j];
+                var centers = PlannerPath.GetPathsFlowNodeCenters(flowGraph, pathID);
+
+                var possiblePath = new UnitPathAssignmentRegionalFlowGraph(assignedUnitCount, pathID, centers, Simulator.Instance.target, flowGraph);
+                unitAssignments.Add(possiblePath);
+            }
+        }
         return unitAssignments;
     }
 

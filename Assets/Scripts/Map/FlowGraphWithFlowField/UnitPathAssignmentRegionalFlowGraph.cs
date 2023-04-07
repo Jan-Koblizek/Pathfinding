@@ -1,17 +1,15 @@
-using Newtonsoft.Json.Linq;
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Drawing;
-using System.IO;
 using System.Linq;
 using UnityEngine;
 
-public class UnitPathAssignmentFlowGraph
+public class UnitPathAssignmentRegionalFlowGraph : MonoBehaviour
 {
     private readonly int _assignedUnits;
     private readonly PathID _pathID;
     private readonly List<Vector2> _centerList;
+    private readonly List<FlowNode> nodes;
     public int indexOfGridPath;
     private Target target;
 
@@ -21,10 +19,16 @@ public class UnitPathAssignmentFlowGraph
     /// <param name="assignedUnits"></param>
     /// <param name="pathID"></param>
     /// <param name="centerList"></param>
-    public UnitPathAssignmentFlowGraph(int assignedUnits, PathID pathID, List<Vector2> centerList, Target target)
+    public UnitPathAssignmentRegionalFlowGraph(int assignedUnits, PathID pathID, List<Vector2> centerList, Target target, FlowGraph flowGraph)
     {
         _assignedUnits = assignedUnits;
         _pathID = pathID;
+        List<NodeID> nodeIDs = PlannerPath.GetPathById(pathID).Path;
+        nodes = new List<FlowNode>();
+        for (int i = 0; i < nodeIDs.Count; i++)
+        {
+            nodes.Add(flowGraph.GetFlowNodeByID(nodeIDs[i].nodeID));
+        }
         _centerList = centerList;
         this.target = target;
     }
@@ -45,7 +49,7 @@ public class UnitPathAssignmentFlowGraph
         return distanceToGate;
     }
 
-    private static int GetSmallestDifference(List<UnitPathAssignmentFlowGraph> pathsForUnits)
+    private static int GetSmallestDifference(List<UnitPathAssignmentRegionalFlowGraph> pathsForUnits)
     {
         for (int i = 0; i < pathsForUnits[0]._centerList.Count; i++)
         {
@@ -68,20 +72,20 @@ public class UnitPathAssignmentFlowGraph
     /// <param name="units">units to assign</param>
     /// <param name="gateDifferenceDepth">the gate to do the assigment to</param>
     /// <returns></returns>
-    private static List<Level> GetLevel(List<UnitPathAssignmentFlowGraph> pathsForUnits, HashSet<Unit> units)
+    private static List<LevelRegional> GetLevel(List<UnitPathAssignmentRegionalFlowGraph> pathsForUnits, HashSet<Unit> units)
     {
         //returns list of differences for given paths
         if (pathsForUnits.Count == 1)
         {
-            var l = new List<Level>();
-            var ll = new Level();
+            var l = new List<LevelRegional>();
+            var ll = new LevelRegional();
             ll.paths = pathsForUnits;
             ll.assignedUnits = units;
             ll.unitCount = units.Count;
         }
         int gateDifferenceDepth = GetSmallestDifference(pathsForUnits);
 
-        var gates = new Dictionary<Vector2, List<UnitPathAssignmentFlowGraph>>();
+        var gates = new Dictionary<Vector2, List<UnitPathAssignmentRegionalFlowGraph>>();
         foreach (var path in pathsForUnits)
         {
             var gate = path._centerList[gateDifferenceDepth];
@@ -91,14 +95,14 @@ public class UnitPathAssignmentFlowGraph
             }
             else
             {
-                gates[gate] = new List<UnitPathAssignmentFlowGraph>() { path };
+                gates[gate] = new List<UnitPathAssignmentRegionalFlowGraph>() { path };
             }
         }
 
-        var levels = new List<Level>(gates.Count);
+        var levels = new List<LevelRegional>(gates.Count);
         foreach (var gate in gates)
         {
-            var level = new Level();
+            var level = new LevelRegional();
             level.gateLocation = gate.Key;
             level.paths = gate.Value;
             var count = 0;
@@ -205,7 +209,7 @@ public class UnitPathAssignmentFlowGraph
         return levels;
     }
 
-    private static int GetClosestGateIndex(Unit unit, List<int> ints, List<Level> levels)
+    private static int GetClosestGateIndex(Unit unit, List<int> ints, List<LevelRegional> levels)
     {
         float distance = Single.MaxValue;
         int min = -1;
@@ -223,7 +227,7 @@ public class UnitPathAssignmentFlowGraph
     }
 
 
-    private static void assigner(List<UnitPathAssignmentFlowGraph> pathsForUnits, HashSet<Unit> units, List<List<Vector2>> gridPaths, bool isWarmUp)
+    private static void assigner(List<UnitPathAssignmentRegionalFlowGraph> pathsForUnits, HashSet<Unit> units, List<RegionalPath> gridPaths, bool isWarmUp)
     {
 
         var level = GetLevel(pathsForUnits, units);
@@ -240,16 +244,16 @@ public class UnitPathAssignmentFlowGraph
         }
     }
 
-    private static void AssignPathToUnits(UnitPathAssignmentFlowGraph unitPathAssignment, HashSet<Unit> assignedUnits, List<List<Vector2>> gridPaths, bool isWarmUp)
+    private static void AssignPathToUnits(UnitPathAssignmentRegionalFlowGraph unitPathAssignment, HashSet<Unit> assignedUnits, List<RegionalPath> gridPaths, bool isWarmUp)
     {
         int i = unitPathAssignment.indexOfGridPath;
         if (!isWarmUp)
         {
             foreach (var unit in assignedUnits)
             {
-                unit.MoveAlongThePath(gridPaths[i]);
+                unit.UseRegionalPath(gridPaths[i]);
                 unit.SetTarget(unitPathAssignment.target);
-                unit.movementMode = MovementMode.PathFollowing;
+                unit.movementMode = MovementMode.RegionalPath;
             }
         }
     }
@@ -258,7 +262,7 @@ public class UnitPathAssignmentFlowGraph
     /// Assigns to every path the required number of units to paths. With use of internal heuristics
     /// </summary>
     /// <param name="pathsForUnits">Paths to be assigned</param>
-    internal static void AssignUnitPathsHeuristic(List<UnitPathAssignmentFlowGraph> pathsForUnits, bool isWarmUp)
+    internal static void AssignUnitPathsHeuristic(List<UnitPathAssignmentRegionalFlowGraph> pathsForUnits, bool isWarmUp)
     {
         //AssignPathsToUnitsHeuristicallyByPathCloseness(pathsForUnits);
         //AssignPathsToUnits(pathsForUnits);
@@ -269,11 +273,11 @@ public class UnitPathAssignmentFlowGraph
     /// For each unit sets one of the precomputed paths to follow.
     /// </summary>
     /// <param name="pathsForUnits"></param>
-    private static void AssignPathsToUnitsHeuristically(List<UnitPathAssignmentFlowGraph> pathsForUnits, bool isWarmUp)
+    private static void AssignPathsToUnitsHeuristically(List<UnitPathAssignmentRegionalFlowGraph> pathsForUnits, bool isWarmUp)
     {
         var units = GetAllUnits();
         pathsForUnits = RemoveZeroPaths(pathsForUnits);
-        List<List<Vector2>> gridPaths = GetFilledPathWithAStarBetweenGates(pathsForUnits);
+        List<RegionalPath> gridPaths = GetRegionalPaths(pathsForUnits);
         for (int i = 0; i < pathsForUnits.Count; i++)
         {
             pathsForUnits[i].indexOfGridPath = i;
@@ -282,10 +286,10 @@ public class UnitPathAssignmentFlowGraph
         assigner(pathsForUnits, units, gridPaths, isWarmUp);
     }
 
-    private static List<UnitPathAssignmentFlowGraph> RemoveZeroPaths(List<UnitPathAssignmentFlowGraph> pathsForUnits)
+    private static List<UnitPathAssignmentRegionalFlowGraph> RemoveZeroPaths(List<UnitPathAssignmentRegionalFlowGraph> pathsForUnits)
     {
         //remove extra paths
-        List<UnitPathAssignmentFlowGraph> tmp = new List<UnitPathAssignmentFlowGraph>();
+        List<UnitPathAssignmentRegionalFlowGraph> tmp = new List<UnitPathAssignmentRegionalFlowGraph>();
         foreach (var unitPath in pathsForUnits)
         {
             if (unitPath._assignedUnits == 0)
@@ -304,52 +308,38 @@ public class UnitPathAssignmentFlowGraph
     /// </summary>
     /// <param name="gridPathsBetweenGates">the path in grid coordinates between gates or gate zone centers</param>
     /// <returns>new denser grid path along the original gate path</returns>
-    private static List<List<Vector2>> GetFilledPathWithAStarBetweenGates(List<UnitPathAssignmentFlowGraph> pathsForUnits)
+    private static List<RegionalPath> GetRegionalPaths(List<UnitPathAssignmentRegionalFlowGraph> pathsForUnits)
     {
-        var gridPaths = new List<List<Vector2>>();
+        var gridPaths = new List<RegionalPath>();
         foreach (var possiblePath in pathsForUnits)
         {
-            gridPaths.Add(possiblePath._centerList);
-            gridPaths[gridPaths.Count - 1].Add(possiblePath.target.Center);
-        }
-
-        //lets fill the path between gates for the units, with the aStar algorithm
-        for (var index = 0; index < gridPaths.Count; index++)
-        {
-            var path = gridPaths[index];
-            var aStarPath = new List<Vector2>() { path[0] };
-
-            for (int k = 0; k < path.Count - 1; k++)
-            {
-                //depending on the graph this connection may not only be
-                //gate-gate but gate-center-gate (and center-gate-center)
-                var gate = path[k];
-                var gate2 = path[k + 1];
-
-                var pathBetweenGates = Pathfinding.ConstructPathAStar(gate, gate2, Pathfinding.StepDistance, 0.2f).ToList();
-
-
-                //if (pathBetweenGates.Count > 3 && MapManager.FlowGraphType == FlowGraphTypeEnum.Zoneless)
-                //{
-                //    //soft  handover of paths between gates 
-                //    var count = 1;
-                //    pathBetweenGates.RemoveRange(pathBetweenGates.Count - count, count);
-                //    pathBetweenGates.RemoveRange(0, count);
-                //}
-
-                //when stitching don't add dupes
-                if (aStarPath.Count > 0 && pathBetweenGates.Count > 0 && aStarPath[aStarPath.Count - 1] == pathBetweenGates[0])
+            RegionalPath regionalPath = new RegionalPath();
+            regionalPath.regionalPathfindingAnalysis = Simulator.Instance.regionalPathfinding;
+            RegionGateway currentGateway = null;
+            List<RegionGateway> regionGateways = new List<RegionGateway>();
+            Dictionary<int, int> regionDirections = new Dictionary<int, int>();
+            Dictionary<int, int> gatewayDirections = new Dictionary<int, int>();
+            for (int i = 0; i < possiblePath.nodes.Count; i++) { 
+                FlowNode node = possiblePath.nodes[i];
+                if (node.ChokePoint != null && (currentGateway == null || currentGateway.ID != node.ChokePoint.ID))
                 {
-                    aStarPath.RemoveAt(aStarPath.Count - 1);
+                    currentGateway = node.ChokePoint;
+                    regionGateways.Add(currentGateway);
+                    MapRegion currentRegion = regionalPath.regionalPathfindingAnalysis.decomposition.mapRegions[node.regionId];
+                    regionDirections[node.regionId] = currentRegion.gateways.IndexOf(currentGateway);
+                    gatewayDirections[currentGateway.ID] = currentGateway.regionA != currentRegion ? 0 : 1;
                 }
-                aStarPath.AddRange(pathBetweenGates);
-
             }
-
-            aStarPath.Add(path[path.Count - 1]);
-            gridPaths[index] = aStarPath;
+            List<Vector2> finalPath = Pathfinding.ConstructPathAStar(
+                            regionGateways[regionGateways.Count - 1].GetCentralPosition(), 
+                            possiblePath._centerList[possiblePath._centerList.Count - 1], 
+                            Pathfinding.StepDistance, 0.2f).ToList();
+            regionalPath.finalPath = finalPath;
+            regionalPath.regionDirections = regionDirections;
+            regionalPath.gatewayDirections = gatewayDirections;
+            regionalPath.goalCoord = Coord.CoordFromPosition(possiblePath._centerList[possiblePath._centerList.Count - 1]);
+            gridPaths.Add(regionalPath);
         }
-
         return gridPaths;
     }
 
@@ -360,11 +350,11 @@ public class UnitPathAssignmentFlowGraph
     }
 }
 
-class Level
+class LevelRegional
 {
     public HashSet<Unit> TEMPunits = new HashSet<Unit>();
     public HashSet<Unit> assignedUnits = new HashSet<Unit>();
-    public List<UnitPathAssignmentFlowGraph> paths;
+    public List<UnitPathAssignmentRegionalFlowGraph> paths;
     public Vector2 gateLocation;
     public int unitCount;
     internal Unit[] TEMPwishedFor;

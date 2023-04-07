@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 public class UnitMovementManager : MonoBehaviour
 {
@@ -8,6 +9,37 @@ public class UnitMovementManager : MonoBehaviour
     public void SetUnits(List<Unit> units)
     {
         this.units = units;
+    }
+
+    public void StartWarmUp(MovementMode movementMode, Vector2 start, Vector2 target)
+    {
+        switch (movementMode)
+        {
+            case MovementMode.FlowField:
+                FlowField flowField = new FlowField(Coord.CoordFromPosition(target));
+                break;
+            case MovementMode.PathFollowing:
+                Stack<Vector2> path = Pathfinding.ConstructPathAStar(start, target, Pathfinding.StepDistance, 0.2f);
+                break;
+            case MovementMode.PathFollowingLowerNumberOfPaths:
+                Stack<Vector2> _ = Pathfinding.ConstructPathAStar(start, target, Pathfinding.StepDistance, 0.2f);
+                break;
+            case MovementMode.SupremeCommanderFlowField:
+                FlowFieldSupremeCommander scFlowField = PathfindingSupremeCommander.CreateSupremeCommanderFlowField(target);
+                break;
+            case MovementMode.RegionalPath:
+                RegionalPath regionalPath = new RegionalPath(Simulator.Instance.regionalPathfinding, start, target);
+                break;
+            case MovementMode.FlowGraph:
+                FlowGraph flowGraph = new FlowGraph(Simulator.Instance.partialFlowGraph, start, target, Simulator.Instance.decomposition.regionMap);
+                FlowGraphPlanning.StartNewFlowGraphPlanWarmUp(flowGraph, units);
+                break;
+            case MovementMode.RegionalFlowGraph:
+                FlowGraph flowGraph2 = new FlowGraph(Simulator.Instance.partialFlowGraph, start, target, Simulator.Instance.decomposition.regionMap);
+                RegionalFlowGraphPlanning.StartNewFlowGraphPlanWarmUp(flowGraph2, units);
+                break;
+
+        }
     }
 
     public void StartMovement(MovementMode movementMode)
@@ -66,10 +98,8 @@ public class UnitMovementManager : MonoBehaviour
                 pathfindingStopWatch.Stop();
                 break;
             case MovementMode.SupremeCommanderFlowField:
-                Debug.Log("Supreme Commander Flow Field");
                 pathfindingStopWatch.Start();
                 FlowFieldSupremeCommander scFlowField = PathfindingSupremeCommander.CreateSupremeCommanderFlowField(Simulator.Instance.target.Center);
-                Debug.Log("Flow Field Constructed");
                 foreach (Unit unit in units)
                 {
                     unit.UseSupremeCommanderFlowField(scFlowField);
@@ -80,11 +110,11 @@ public class UnitMovementManager : MonoBehaviour
                 break;
             case MovementMode.RegionalPath:
                 pathfindingStopWatch.Start();
-                //RegionalPath regionalPath = new RegionalPath(Simulator.Instance.regionalPathfinding, units[0].position, Simulator.Instance.target.Center);
+                RegionalPath regionalPath = new RegionalPath(Simulator.Instance.regionalPathfinding, units[0].position, Simulator.Instance.target.Center);
 
                 foreach (Unit unit in units)
                 {
-                    RegionalPath regionalPath = new RegionalPath(Simulator.Instance.regionalPathfinding, unit.position, Simulator.Instance.target.Center);
+                    //RegionalPath regionalPath = new RegionalPath(Simulator.Instance.regionalPathfinding, unit.position, Simulator.Instance.target.Center);
                     unit.UseRegionalPath(regionalPath);
                     unit.SetTarget(Simulator.Instance.target);
                     unit.movementMode = MovementMode.RegionalPath;
@@ -92,12 +122,17 @@ public class UnitMovementManager : MonoBehaviour
                 pathfindingStopWatch.Stop();
                 break;
             case MovementMode.FlowGraph:
-                FlowGraph flowGraph = FlowGraph.MakeZonelessFlowGraph(Simulator.Instance.decomposition, units[0].position, Simulator.Instance.target.Center);
                 pathfindingStopWatch.Start();
+                FlowGraph flowGraph = new FlowGraph(Simulator.Instance.partialFlowGraph, units[0].position, Simulator.Instance.target.Center, Simulator.Instance.decomposition.regionMap);
                 FlowGraphPlanning.StartNewFlowGraphPlan(flowGraph, units);
                 pathfindingStopWatch.Stop();
                 break;
-                
+            case MovementMode.RegionalFlowGraph:
+                pathfindingStopWatch.Start();
+                FlowGraph flowGraph2 = new FlowGraph(Simulator.Instance.partialFlowGraph, units[0].position, Simulator.Instance.target.Center, Simulator.Instance.decomposition.regionMap);
+                RegionalFlowGraphPlanning.StartNewFlowGraphPlan(flowGraph2, units);
+                pathfindingStopWatch.Stop();
+                break;
         }
         Debug.Log($"Pathfinding Took: {pathfindingStopWatch.Elapsed.TotalMilliseconds} ms");
     }
