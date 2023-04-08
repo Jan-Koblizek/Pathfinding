@@ -21,10 +21,9 @@ public class CameraController : MonoBehaviour
     void Start()
     {
         cam = GetComponent<Camera>();
-        UpdateBounds();
     }
 
-    void UpdateBounds()
+    public void UpdateBounds()
     {
         lowerXbound = cam.orthographicSize * ((float)Screen.width / Screen.height) - 0.5f;
         higherXbound = (Map.instance.tiles.GetLength(0)) - cam.orthographicSize * ((float)Screen.width / Screen.height) - 0.5f;

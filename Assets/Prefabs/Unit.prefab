@@ -99,6 +99,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   position: {x: 0, y: 0}
   velocity: {x: 0, y: 0}
+  desiredVelocity: {x: 0, y: 0}
   moveDirection: {x: 0, y: 0}
   speed: 0
   deltaTime: 0

@@ -6,6 +6,7 @@ using UnityEngine.UIElements;
 
 public class UnitMovementManager : MonoBehaviour
 {
+    [HideInInspector]
     public List<Unit> units = new List<Unit>();
     public void SetUnits(List<Unit> units)
     {

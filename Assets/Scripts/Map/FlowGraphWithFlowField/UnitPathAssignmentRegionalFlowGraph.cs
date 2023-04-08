@@ -88,7 +88,7 @@ public class UnitPathAssignmentRegionalFlowGraph
             level.gateLocation = gate.Key;
             level.pathIndices = gate.Value;
             var count = 0;
-            foreach (int pathIndex in pathIndices)
+            foreach (int pathIndex in level.pathIndices)
             {
                 count += unitCounts[pathIndex];
             }
@@ -183,7 +183,6 @@ public class UnitPathAssignmentRegionalFlowGraph
             //sanity check
             level.TEMPunits = null;
             level.TEMPwishedFor = null;
-            Debug.Log($"Unit Count: {level.unitCount}, {level.assignedUnits.Count}");
             Debug.Assert(level.unitCount == level.assignedUnits.Count, "level.unitCount == level.assignedUnits.Count");
         }
 

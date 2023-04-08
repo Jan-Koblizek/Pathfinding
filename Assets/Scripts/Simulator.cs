@@ -4,21 +4,25 @@ using UnityEngine;
 
 public class Simulator : MonoBehaviour
 {
+    public SimulationSetup simulationSpecification;
     public GameObject regionIndicator;
     public static Simulator Instance { get; private set; }
-    public Target target;
-    public InitialUnitPositions unitPositions;
     public UnitMovementManager unitMovementManager;
     public GameObject unitPrefab;
+    public GameObject unitsParent;
+    public GameObject targetPrefab;
     public MovementMode movementMode;
 
-    [SerializeField]
+    //[HideInInspector]
     public List<Vector2> warmUpStartPositions;
+    //[HideInInspector]
     public List<Vector2> warmUpTargetPositions;
 
     private float simulationTime;
     private int unitsReachedTarget;
     private int numberOfUnits;
+    [HideInInspector]
+    public Target target;
     [HideInInspector]
     public bool simulationStarted = false;
     [HideInInspector]
@@ -37,6 +41,27 @@ public class Simulator : MonoBehaviour
     private void Start()
     {
         Instance = this;
+        Map.instance.Initialize(simulationSpecification.mapTexture);
+        List<Unit> units = new List<Unit>();
+        for (int y = 0; y < simulationSpecification.unitStartMap.height; y++)
+        {
+            for (int x = 0; x < simulationSpecification.unitStartMap.width; x++)
+            {
+                Color pixel1 = simulationSpecification.unitStartMap.GetPixel(x, y);
+                if (pixel1.r > 0.5)
+                {
+                    GameObject go = Instantiate(unitPrefab, new Vector3(x, y, 0.0f), Quaternion.identity, unitsParent.transform);
+                    Unit unit = go.GetComponent<Unit>();
+                    units.Add(unit);
+                }
+            }
+        }
+        unitMovementManager.SetUnits(units);
+
+        warmUpStartPositions = simulationSpecification.warmUpStartPositions;
+        warmUpTargetPositions = simulationSpecification.warmUpGoalPositions;
+
+        target = Target.CreateTarget(simulationSpecification.targetPosition, simulationSpecification.targetSize, targetPrefab);
     }
 
     private void Update()
@@ -62,8 +87,8 @@ public class Simulator : MonoBehaviour
     public void UnitReachedTarget()
     {
         unitsReachedTarget++;
-        if (!halfFinished && unitsReachedTarget >= numberOfUnits / 2) {
-            Debug.Log($"Half of the units arrived: {simulationTime}s");
+        if (!halfFinished && unitsReachedTarget >= numberOfUnits * 0.9) {
+            Debug.Log($"90% the units arrived: {simulationTime}s");
             halfFinished = true;
         }
         if (unitsReachedTarget == numberOfUnits)

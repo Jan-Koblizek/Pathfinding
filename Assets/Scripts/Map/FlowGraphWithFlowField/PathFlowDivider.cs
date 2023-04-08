@@ -9,22 +9,22 @@ public class PathFlowDivider
 {
     public RegionGateway gateway;
     public List<DividerPathInfo> paths;
-    private List<int> initialUnitCounts;
     private float totalFlow;
     private int unitsEntered = 0;
     //private List<int> initialUnitCounts;
 
     public PathFlowDivider(RegionGateway gateway, List<RegionGateway> goalGates, List<int> pathIds, List<float> pathFlows, List<int> pathUnitCounts)
     {
+        //Debug.Log($"Gateway: {gateway.GetCentralPosition()}, Path IDs Count {pathIds.Count}");
         this.gateway = gateway;
         paths = new List<DividerPathInfo>();
-        initialUnitCounts = new List<int>(pathUnitCounts);
         for (int i = 0; i < goalGates.Count; i++)
         {
             RegionGateway gateway2 = goalGates[i];
             Vector2 gatewayDirection = (gateway.end.GetWorldPosition() - gateway.start.GetWorldPosition()).normalized;
             Vector2 directionBetweenGates = (gateway2.GetCentralPosition() - gateway.GetCentralPosition()).normalized;
             float directionFactor = Vector2.Dot(gatewayDirection, directionBetweenGates);
+            //Debug.Log($"Unit Count: {pathUnitCounts[i]}, Direction: {directionBetweenGates}, Gate Index: {gateway2.ID}, Path Id {pathIds[i]}");
             DividerPathInfo info = new DividerPathInfo(pathIds[i], pathUnitCounts[i], pathFlows[i], 0.0f, directionFactor);
             paths.Add(info);
         }
@@ -75,30 +75,35 @@ public class PathFlowDivider
         }
         else
         {
-            float shift = Mathf.Max(1.0f / (unitsEntered + 10), 0.01f);
+            float regionWidth = paths[id].divisionThreshold - (id > 0 ? paths[id - 1].divisionThreshold : 0);
+            float shift = Mathf.Min(Mathf.Max(1.0f / (unitsEntered + 10), 0.01f), regionWidth * 0.25f);
+            float scaleFactor = (1.0f / (1.0f  - shift)) - 1.0f;
             float totalWeightedFlow = 0.0f;
+            List<float> flowWeights = new List<float>();
             for (int i = 0; i < paths.Count; i++)
             {
-                totalWeightedFlow += paths[i].flow * ((float)paths[i].unitCount / (float)initialUnitCounts[i]);
+                float root = paths[i].unitCount / (float)paths[i].initialUnitCount;
+                flowWeights.Add(root < 0.000001 ? 0 : Mathf.Sqrt(root));
+                totalWeightedFlow += paths[i].flow * flowWeights[i];
             }
-            for (int i = 0; i < paths.Count; i++)
+            for (int i = 0; i < paths.Count - 1; i++)
             {
                 float flowUntilThreshold = 0.0f;
                 if (i < id)
                 {
                     for (int j = 0; j <= i; j++)
                     {
-                        flowUntilThreshold += paths[j].flow * ((float)paths[j].unitCount / (float)initialUnitCounts[j]);
+                        flowUntilThreshold += paths[j].flow * flowWeights[j];
                     }
-                    paths[i].divisionThreshold += (flowUntilThreshold / totalWeightedFlow) * shift;
+                    paths[i].divisionThreshold += (flowUntilThreshold / totalWeightedFlow) * scaleFactor;
                 }
-                if (i > id)
+                if (i >= id)
                 {
-                    for (int j = paths.Count-1; j >= i; j--)
+                    for (int j = paths.Count-1; j > i; j--)
                     {
-                        flowUntilThreshold += paths[j].flow * ((float)paths[j].unitCount / (float)initialUnitCounts[j]);
+                        flowUntilThreshold += paths[j].flow * flowWeights[j];
                     }
-                    paths[i-1].divisionThreshold -= (flowUntilThreshold / totalWeightedFlow) * shift;
+                    paths[i].divisionThreshold -= (flowUntilThreshold / totalWeightedFlow) * scaleFactor;
                 }
             }
         }
@@ -109,6 +114,7 @@ public class PathFlowDivider
     {
         public int id;
         public int unitCount;
+        public int initialUnitCount;
         public float flow;
         public float divisionThreshold;
         public float gateDirectionFactor;
@@ -117,6 +123,7 @@ public class PathFlowDivider
         {
             this.id = id;
             this.unitCount = unitCount;
+            this.initialUnitCount = unitCount;
             this.flow = flow;
             this.divisionThreshold = divisionThreshold;
             this.gateDirectionFactor = gateDistanceFactor;

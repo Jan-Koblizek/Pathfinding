@@ -53,7 +53,7 @@ public class FlowEdge
 
     private static float GetDistanceBetweenFlowNodes(FlowNode start, FlowNode end)
     {
-        float distance = MinimumDistanceBetweenChokes(start, end);
+        float distance = DistanceBetweenChokeCenters(start, end);
         return distance;
     }
 
@@ -88,6 +88,33 @@ public class FlowEdge
         List<Coord> start = a.ChokePoint?.gateTilesCoords ?? new List<Coord> { a.Center };
         List<Coord> end = b.ChokePoint?.gateTilesCoords ?? new List<Coord> { b.Center };
         Stack<Vector2> pathStack = Pathfinding.ConstructPathAStar(start, end,  Pathfinding.StepDistance, 0.2f);
+        List<Vector2> path = pathStack.ToList();
+        if (path == null)
+        {
+            //no path found
+            return int.MaxValue;
+        }
+
+        if (path.Count == 1)
+        {
+            // start == end
+            return 0;
+        }
+
+        float sum = 0;
+        for (int i = 1; i < path.Count; i++)
+        {
+            sum += Vector2.Distance(path[i - 1], path[i]);
+        }
+
+        return sum;
+    }
+
+    public static float DistanceBetweenChokeCenters(FlowNode a, FlowNode b)
+    {
+        List<Coord> start = new List<Coord> { a.Center };
+        List<Coord> end = new List<Coord> { b.Center };
+        Stack<Vector2> pathStack = Pathfinding.ConstructPathAStar(start, end, Pathfinding.StepDistance, 0.2f);
         List<Vector2> path = pathStack.ToList();
         if (path == null)
         {

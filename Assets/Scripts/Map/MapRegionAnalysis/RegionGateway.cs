@@ -38,9 +38,8 @@ public class RegionGateway
 
     public float GetSize()
     {
-        if (smallerSize) {
-            return gateTilesCoords.Count - 1;
-        }
-        return gateTilesCoords.Count;
+        Coord centre = GetCentralCoord();
+        int depth = WaterDecomposition.GetPixelDepth(Simulator.Instance.decomposition.obstructionMap, centre);
+        return Mathf.Min(depth * 2, smallerSize ? gateTilesCoords.Count - 1 : gateTilesCoords.Count);
     }
 }

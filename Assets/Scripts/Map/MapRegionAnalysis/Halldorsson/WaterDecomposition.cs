@@ -7,6 +7,7 @@ using utils;
 
 public class WaterDecomposition
 {
+    private static List<List<Coord>> circleMap;
     public RegionalDecomposition Decompose(Tile[,] mapSource, int wallThreshold)
     {
         List<RegionGateway> gateways;
@@ -21,21 +22,21 @@ public class WaterDecomposition
         mapRegions = new List<MapRegion>();
         mapWidth = mapSource.GetLength(0);
         mapHeight = mapSource.GetLength(1);
-        bool[,] map = new bool[mapWidth, mapHeight];
+        bool[,] obstructionMap = new bool[mapWidth, mapHeight];
         for (int x = 0; x < mapWidth; x++)
         {
             for (int y = 0; y < mapHeight; y++)
             {
-                map[x, y] = !mapSource[x, y].obstructed;
+                obstructionMap[x, y] = !mapSource[x, y].obstructed;
             }
         }
 
         int maxDepthUsed;
-        buildDepthMap(map, wallThreshold, mapWidth, mapHeight, out depthMap, out maxDepthUsed);
-        buildRegionsMap(map, maxDepthUsed, mapWidth, mapHeight, ref depthMap, out regionMap, out mapRegions, out numberOfClusters);
-        buildGates(map, mapWidth, mapHeight, ref regionMap, out gateways, ref mapRegions);
-        refineGates(map, ref gateways, gateRegionIndex, ref regionMap);
-        return new RegionalDecomposition(gateways, mapRegions, depthMap, numberOfClusters, regionMap, map);
+        buildDepthMap(obstructionMap, wallThreshold, mapWidth, mapHeight, out depthMap, out maxDepthUsed);
+        buildRegionsMap(obstructionMap, maxDepthUsed, mapWidth, mapHeight, ref depthMap, out regionMap, out mapRegions, out numberOfClusters);
+        buildGates(obstructionMap, mapWidth, mapHeight, ref regionMap, out gateways, ref mapRegions);
+        refineGates(obstructionMap, ref gateways, gateRegionIndex, ref regionMap);
+        return new RegionalDecomposition(gateways, mapRegions, depthMap, numberOfClusters, regionMap, obstructionMap);
     }
 
     private void buildDepthMap(bool[,] map, int wallThreshold, int mapWidth, int mapHeight, out int[,] depthMap, out int maxDepthUsed)
@@ -51,7 +52,7 @@ public class WaterDecomposition
          *
          */
 
-        List<List<Coord>> circleMap = new List<List<Coord>>();
+        circleMap = new List<List<Coord>>();
         int maxDist = ((Mathf.Min(mapWidth, mapHeight) / 2) + 1);
 
         for (int i = 0; i <= maxDist; i++)
@@ -139,6 +140,48 @@ public class WaterDecomposition
                 }
             }
         }
+    }
+
+    public static int GetPixelDepth(bool[,] obstructionMap, Coord coord)
+    {
+        int distance = 0;
+        int counter = 0;
+
+        int mapWidth = obstructionMap.GetLength(0);
+        int mapHeight = obstructionMap.GetLength(1);
+
+        if (obstructionMap[coord.X, coord.Y])
+        {
+            bool hitWall = false;
+            while (!hitWall)
+            {
+                // Use circleMap to fill in height for tile
+                for (int it = 0; it < circleMap[distance].Count; it++)
+                {
+                    int cX = circleMap[distance][it].X; //circleX
+                    int cY = circleMap[distance][it].Y; //circleY
+                                                        //			Check all 4 quadrants!!!
+                    for (int quadrant = 0; quadrant < 4; ++quadrant)
+                    {
+                        int tmpX = cX; cX = -cY; cY = tmpX;
+                        int mX = coord.X + cX; //mapX
+                        int mY = coord.Y + cY; //mapY
+                                         //			Either wall or end of map!
+                        if (mX < 0 || mX >= mapWidth || mY < 0 || mY >= mapHeight || !obstructionMap[mX, mY])
+                        {
+                            ++counter;
+                            if (counter == 1)
+                            {
+                                return distance;
+                            }
+                        }
+                    }
+                }
+                ++distance;
+            }
+            return distance;
+        }
+        return 0;
     }
 
     private void buildRegionsMap(bool[,] map, int maxDepthUsed, int mapWidth, int mapHeight, ref int[,] depthMap, out int[,] regionMap, out List<MapRegion> mapRegions, out int numberOfClusters)

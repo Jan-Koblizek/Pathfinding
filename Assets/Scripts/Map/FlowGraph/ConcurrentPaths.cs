@@ -695,7 +695,8 @@ internal class ConcurrentPaths
             {
                 return 0;
             }
-            var result = finishedSteps * Flow * SimulationSettings.instance.UnitSpeed;
+            float unitSize = (2 * SimulationSettings.UnitRadius + 0.8f); // Unit size + some space around it
+            var result = finishedSteps * Flow * SimulationSettings.instance.UnitSpeed / unitSize;
             return result;
         }
 
@@ -713,7 +714,8 @@ internal class ConcurrentPaths
             }
 
             var remainingVolume = flowVolume - InitialArrivals;
-            var result = remainingVolume / (Flow * SimulationSettings.instance.UnitSpeed) + Cost;
+            float unitSize = (2 * SimulationSettings.UnitRadius + 0.8f); // Unit size + some space around it
+            var result = (unitSize * remainingVolume) / (Flow * SimulationSettings.instance.UnitSpeed) + Cost;
 
             return result;
         }
@@ -749,18 +751,19 @@ internal class ConcurrentPaths
 
 
 
-    private static int TransitOfPath(PathID pathID, int step)
+    private static int TransitOfPath(PathID pathID, float time)
     {
         var path = PlannerPath.GetPathById(pathID);
 
-        var finished = step - path.Cost;
+        var finished = time - path.Cost;
         var finishedSteps = (int)Math.Floor(finished);
         if (finishedSteps <= 0)
         {
             return 0;
         }
 
-        var result = finishedSteps * path.Flow * SimulationSettings.instance.UnitSpeed;
+        float unitSize = (2 * SimulationSettings.UnitRadius + 0.8f); // Unit size + some space around it
+        var result = finishedSteps * path.Flow * SimulationSettings.instance.UnitSpeed / unitSize;
         return (int)Math.Floor(result);
     }
 
@@ -771,13 +774,13 @@ internal class ConcurrentPaths
     /// <param name="step">Steps count</param>
     /// <param name="assignment">How many units used which path</param>
     /// <returns>Total number of units in all paths</returns>
-    internal int TransitOfPaths(int step, out List<int> assignment)
+    internal int TransitOfPaths(float time, out List<int> assignment)
     {
         var sum = 0;
         assignment = new List<int>();
         foreach (var pathID in _atOnce)
         {
-            var transitOfPath = TransitOfPath(pathID, step);
+            var transitOfPath = TransitOfPath(pathID, time);
             sum += transitOfPath;
             assignment.Add(transitOfPath);
         }

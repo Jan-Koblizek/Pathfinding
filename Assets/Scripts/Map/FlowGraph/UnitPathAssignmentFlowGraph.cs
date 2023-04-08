@@ -2,7 +2,6 @@ using Newtonsoft.Json.Linq;
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Drawing;
 using System.IO;
 using System.Linq;
 using UnityEngine;
@@ -250,6 +249,12 @@ public class UnitPathAssignmentFlowGraph
                 unit.MoveAlongThePath(gridPaths[i]);
                 unit.SetTarget(unitPathAssignment.target);
                 unit.movementMode = MovementMode.PathFollowing;
+                /*
+                if (unitPathAssignment.indexOfGridPath == 1)
+                {
+                    unit.GetComponent<SpriteRenderer>().color = Color.blue;
+                }
+                */
             }
         }
     }

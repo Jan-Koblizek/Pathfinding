@@ -7,7 +7,6 @@ using UnityEngine.Diagnostics;
 public class Map : MonoBehaviour
 {
     public GameObject tilesParent;
-    [SerializeField]
     private Texture2D groundMap;
 
     public GameObject obstructedTilePrefab;
@@ -22,11 +21,26 @@ public class Map : MonoBehaviour
     public Walls walls;
 
 
-
     private void Awake()
     {
+        instance = this;
+    }
+    public void Initialize(Texture2D map)
+    {
+        groundMap = map;
         int width = (groundMap.width / 16) * 16;
         int height = (groundMap.height / 16) * 16;
+
+        if (tiles != null)
+        {
+            for (int i = 0; i < tiles.GetLength(0); i++)
+            {
+                for (int j = 0; j < tiles.GetLength(1); j++)
+                {
+                    Destroy(tiles[i, j].gameObject);
+                }
+            }
+        }
 
         tiles = new Tile[width, height];
         //smallChunks = new MapSmallChunk[width / 4, height / 4];
@@ -53,9 +67,9 @@ public class Map : MonoBehaviour
                 }
             }
         }
-        instance = this;
         walls = new Walls();
         walls.Initialize(this);
+        Camera.main.GetComponent<CameraController>().UpdateBounds();
     }
 
     public Tile GetTile(Coord coord)
