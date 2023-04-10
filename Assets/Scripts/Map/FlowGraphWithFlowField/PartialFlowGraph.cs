@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using UnityEngine;
 using UnityEngine.UIElements;
 using static UnityEngine.GraphicsBuffer;
@@ -77,7 +78,8 @@ public class PartialFlowGraph
     }
 
     internal static PartialFlowGraph PartialFlowGraphFromDecomposition(
-    RegionalDecomposition decomposition)
+        RegionalDecomposition decomposition,
+        Dictionary<RegionGateway, Dictionary<RegionGateway, float>> gateDistances = null)
     {
         Dictionary<int, List<int>> zonesToChokes = new Dictionary<int, List<int>>();
 
@@ -97,7 +99,7 @@ public class PartialFlowGraph
         Dictionary<int, HashSet<FlowNode>> zoneToNodes = new Dictionary<int, HashSet<FlowNode>>();
 
         CreateEdgeWithNodesAroundGates(zoneToNodes, nodeToEdges, ref decomposition);
-        ConnectNodesInZoneWithEdges(zonesToChokes, zoneToNodes, nodeToEdges);
+        ConnectNodesInZoneWithEdges(zonesToChokes, zoneToNodes, nodeToEdges, ref gateDistances);
 
 
         // now just save the values for the drawableGraph
@@ -117,7 +119,8 @@ public class PartialFlowGraph
     private static void ConnectNodesInZoneWithEdges(
     IDictionary<int, List<int>> zoneChoke,
     IDictionary<int, HashSet<FlowNode>> zoneToNodes,
-    IDictionary<FlowNode, HashSet<FlowEdge>> nodeToEdges)
+    IDictionary<FlowNode, HashSet<FlowEdge>> nodeToEdges,
+    ref Dictionary<RegionGateway, Dictionary<RegionGateway, float>> gateDistances)
     {
         // for each pair a, b of flownodes in same zone,
         // connect with the width of min of both gates
@@ -139,7 +142,15 @@ public class PartialFlowGraph
                     float bSize = b.ChokePoint.GetSize();
                     float size = Mathf.Min(aSize, bSize);
 
-                    FlowEdge edge = new FlowEdge(a, b, size);
+                    FlowEdge edge;
+                    if (gateDistances != null)
+                    {
+                        edge = new FlowEdge(a, b, gateDistances[a.ChokePoint][b.ChokePoint], size);
+                    }
+                    else
+                    {
+                        edge = new FlowEdge(a, b, size);
+                    }
                     Utilities.AddToHashsetDictionary(nodeToEdges, a, edge);
                     Utilities.AddToHashsetDictionary(nodeToEdges, b, edge);
                 }
@@ -170,10 +181,9 @@ public class PartialFlowGraph
             Utilities.AddToHashsetDictionary(zoneToNodes, aZone, a);
             Utilities.AddToHashsetDictionary(zoneToNodes, bZone, b);
 
-            float abDistance = Vector2.Distance(a.Center.GetWorldPosition(), b.Center.GetWorldPosition());
             float gateWidth = choke.GetSize();
 
-            FlowEdge edge = new FlowEdge(a, b, abDistance, gateWidth);
+            FlowEdge edge = new FlowEdge(a, b, 0, gateWidth);
             Utilities.AddToHashsetDictionary(nodeToEdges, a, edge);
             Utilities.AddToHashsetDictionary(nodeToEdges, b, edge);
         }

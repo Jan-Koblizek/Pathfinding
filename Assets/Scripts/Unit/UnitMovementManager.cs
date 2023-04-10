@@ -37,8 +37,12 @@ public class UnitMovementManager : MonoBehaviour
                 FlowGraphPlanning.StartNewFlowGraphPlanWarmUp(flowGraph, units);
                 break;
             case MovementMode.RegionalFlowGraph:
-                FlowGraph flowGraph2 = new FlowGraph(Simulator.Instance.partialFlowGraph, start, target, Simulator.Instance.decomposition.regionMap);
-                RegionalFlowGraphPlanning.StartNewFlowGraphPlanWarmUp(flowGraph2, units.ToHashSet());
+                FlowGraph flowGraphRFG = new FlowGraph(Simulator.Instance.partialFlowGraph, start, target, Simulator.Instance.decomposition.regionMap);
+                RegionalFlowGraphPlanning.StartNewFlowGraphPlanWarmUp(flowGraphRFG, units.ToHashSet());
+                break;
+            case MovementMode.RegionalFlowGraphPaths:
+                FlowGraph flowGraphRFGP = new FlowGraph(Simulator.Instance.partialFlowGraph, units[0].position, Simulator.Instance.target.Center, Simulator.Instance.decomposition.regionMap);
+                RegionalFlowGraphPlanningUsingSubPaths.StartNewFlowGraphPlan(flowGraphRFGP, units.ToHashSet());
                 break;
 
         }
@@ -131,10 +135,17 @@ public class UnitMovementManager : MonoBehaviour
                 break;
             case MovementMode.RegionalFlowGraph:
                 pathfindingStopWatch.Start();
-                FlowGraph flowGraph2 = new FlowGraph(Simulator.Instance.partialFlowGraph, units[0].position, Simulator.Instance.target.Center, Simulator.Instance.decomposition.regionMap);
-                RegionalFlowGraphPlanning.StartNewFlowGraphPlan(flowGraph2, units.ToHashSet());
+                FlowGraph flowGraphRFG = new FlowGraph(Simulator.Instance.partialFlowGraph, units[0].position, Simulator.Instance.target.Center, Simulator.Instance.decomposition.regionMap);
+                RegionalFlowGraphPlanning.StartNewFlowGraphPlan(flowGraphRFG, units.ToHashSet());
                 pathfindingStopWatch.Stop();
                 break;
+            case MovementMode.RegionalFlowGraphPaths:
+                pathfindingStopWatch.Start();
+                FlowGraph flowGraphRFGP = new FlowGraph(Simulator.Instance.partialFlowGraph, units[0].position, Simulator.Instance.target.Center, Simulator.Instance.decomposition.regionMap);
+                RegionalFlowGraphPlanningUsingSubPaths.StartNewFlowGraphPlan(flowGraphRFGP, units.ToHashSet());
+                pathfindingStopWatch.Stop();
+                break;
+
         }
         Debug.Log($"Pathfinding Took: {pathfindingStopWatch.Elapsed.TotalMilliseconds} ms");
     }

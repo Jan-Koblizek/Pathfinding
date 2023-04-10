@@ -1,10 +1,97 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection.Emit;
+using Unity.VisualScripting;
 using UnityEngine;
 
 public static class MapRegionPathfinding
 {
+    public static (
+        Dictionary<RegionGateway, Dictionary<RegionGateway, float>> distances, 
+        Dictionary<RegionGateway, Dictionary<RegionGateway, List<Vector2>>> paths) DistancesAndPathsBetweenGates(RegionalDecomposition decomposition)
+    {
+        Dictionary<RegionGateway, Dictionary<RegionGateway, float>> distances = new Dictionary<RegionGateway, Dictionary<RegionGateway, float>>();
+        Dictionary<RegionGateway, Dictionary<RegionGateway, List<Vector2>>> paths = new Dictionary<RegionGateway, Dictionary<RegionGateway, List<Vector2>>>();
+        for (int i = 0; i < decomposition.gateways.Count; i++)
+        {
+            RegionGateway gate = decomposition.gateways[i];
+            (Dictionary<RegionGateway, float> distances, Dictionary<RegionGateway, List<Vector2>> paths) gateResult = computeDistancesAndPathsToNearbyGates(gate, ref decomposition, ref distances, ref paths);
+            distances[gate] = gateResult.distances;
+            paths[gate] = gateResult.paths;
+        }
+
+        foreach (RegionGateway gate1 in paths.Keys)
+        {
+            foreach (RegionGateway gate2 in paths[gate1].Keys)
+            {
+                Vector2 goalRegionCentre = new Vector2();
+                if (gate1.regionA.ID == gate2.regionA.ID) goalRegionCentre = gate2.GetCentralPosition() + gate2.regionBDirection * gate2.GetSize() * 0.5f;
+                else if (gate1.regionA.ID == gate2.regionB.ID) goalRegionCentre = gate2.GetCentralPosition() + gate2.regionADirection * gate2.GetSize() * 0.5f;
+                else if (gate1.regionB.ID == gate2.regionA.ID) goalRegionCentre = gate2.GetCentralPosition() + gate2.regionBDirection * gate2.GetSize() * 0.5f;
+                else if (gate1.regionB.ID == gate2.regionB.ID) goalRegionCentre = gate2.GetCentralPosition() + gate2.regionADirection * gate2.GetSize() * 0.5f;
+                paths[gate1][gate2].Add(goalRegionCentre);
+            }
+        }
+        return (distances, paths);
+    }
+
+    private static (Dictionary<RegionGateway, float> distances, Dictionary<RegionGateway, List<Vector2>> paths) computeDistancesAndPathsToNearbyGates(
+        RegionGateway gate, ref RegionalDecomposition decomposition, 
+        ref Dictionary<RegionGateway, Dictionary<RegionGateway, float>> distancesToGates,
+        ref Dictionary<RegionGateway, Dictionary<RegionGateway, List<Vector2>>> pathsBetweenGates)
+    {
+        Dictionary<RegionGateway, float> distancesToNearbyGates = new Dictionary<RegionGateway, float>();
+        Dictionary<RegionGateway, List<Vector2>> pathsToNearbyGates = new Dictionary<RegionGateway, List<Vector2>>();
+
+        List<RegionGateway> nearbyGates = new List<RegionGateway>();
+        nearbyGates.AddRange(gate.regionA.gateways);
+        nearbyGates.AddRange(gate.regionB.gateways);
+        nearbyGates.RemoveAll((RegionGateway x) => x == gate);
+
+        for (int i = 0; i < nearbyGates.Count; i++)
+        {
+            RegionGateway nearbyGate = nearbyGates[i];
+            if (distancesToGates.ContainsKey(nearbyGate) && distancesToGates[nearbyGate].ContainsKey(gate))
+            {
+                distancesToNearbyGates[nearbyGate] = distancesToGates[nearbyGate][gate];
+                List<Vector2> pathOpposite = pathsBetweenGates[nearbyGate][gate];
+                List<Vector2> path = new List<Vector2>();
+                for (int j = pathOpposite.Count - 1; j >= 0; j--)
+                {
+                    path.Add(pathOpposite[j]);
+                }
+                pathsToNearbyGates[nearbyGate] = path;
+            }
+            else
+            {
+                float distance = 0.0f;
+                Vector2 currentPosition = gate.gateTilesCoords[gate.gateTilesCoords.Count / 2].GetWorldPosition();
+                List<Vector2> pathBetweenTheGates = Pathfinding.ConstructPathAStar(
+                    gate.gateTilesCoords[gate.gateTilesCoords.Count / 2].GetWorldPosition(),
+                    nearbyGate.gateTilesCoords[nearbyGate.gateTilesCoords.Count / 2].GetWorldPosition(),
+                    Pathfinding.StepDistance,
+                    0.0f).ToList();
+                if (pathBetweenTheGates != null && pathBetweenTheGates.Count > 0)
+                {
+                    foreach (Vector2 point in pathBetweenTheGates)
+                    {
+                        distance += Vector2.Distance(point, currentPosition);
+                        currentPosition = point;
+                    }
+                    distancesToNearbyGates[nearbyGate] = distance;
+                    pathsToNearbyGates[nearbyGate] = pathBetweenTheGates;
+                }
+                else
+                {
+                    distancesToNearbyGates[nearbyGate] = float.MaxValue;
+                    pathsToNearbyGates[nearbyGate] = null;
+                }
+            }
+        }
+        return (distancesToNearbyGates, pathsToNearbyGates);
+    }
+
     public static Dictionary<RegionGateway, Dictionary<RegionGateway, float>> DistancesBetweenGates(RegionalDecomposition decomposition)
     {
         Dictionary<RegionGateway, Dictionary<RegionGateway, float>> distances = new Dictionary<RegionGateway, Dictionary<RegionGateway, float>>();
@@ -29,7 +116,7 @@ public static class MapRegionPathfinding
             RegionGateway nearbyGate = nearbyGates[i];
             if (distancesToGates.ContainsKey(nearbyGate) && distancesToGates[nearbyGate].ContainsKey(gate))
             {
-                distancesToNearbyGates[gate] = distancesToGates[nearbyGate][gate];
+                distancesToNearbyGates[nearbyGate] = distancesToGates[nearbyGate][gate];
             }
             else
             {

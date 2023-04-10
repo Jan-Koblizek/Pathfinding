@@ -33,6 +33,7 @@ public class Unit : MonoBehaviour
     private PathExecutor pathExecutor;
     private RegionalPathExecutor regionalPathExecutor;
     private RegionalFlowGraphPathExecutor regionalFlowGraphPathExecutor;
+    private RegionalFlowGraphPathUsingSubPathsExecutor regionalFlowGraphPathUsingSubPathsExecutor;
     private FlowFieldSupremeCommander flowFieldSupremeCommander;
     private NearbyUnitsManager nearbyUnitsManager;
 
@@ -110,6 +111,9 @@ public class Unit : MonoBehaviour
                 break;
             case MovementMode.RegionalFlowGraph:
                 seek = regionalFlowGraphPathExecutor.GetSeekForce();
+                break;
+            case MovementMode.RegionalFlowGraphPaths:
+                seek = regionalFlowGraphPathUsingSubPathsExecutor.GetSeekForce();
                 break;
             default:
                 seek = Vector2.zero;
@@ -227,6 +231,11 @@ public class Unit : MonoBehaviour
     public void UseRegionalFlowGraphPath(RegionalFlowGraphPath graphPath, int startingPath)
     {
         regionalFlowGraphPathExecutor = new RegionalFlowGraphPathExecutor(this, graphPath, startingPath);
+    }
+
+    public void UseRegionalFlowGraphPathUsingSubPaths(RegionalFlowGraphPathUsingSubPaths graphPath, int startingPath)
+    {
+        regionalFlowGraphPathUsingSubPathsExecutor = new RegionalFlowGraphPathUsingSubPathsExecutor(this, graphPath, startingPath);
     }
 
     public void SetTarget(Target target)

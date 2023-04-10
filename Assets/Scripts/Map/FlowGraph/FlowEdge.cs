@@ -18,17 +18,17 @@ public class FlowEdge
     public readonly float EdgeLength; //solver cost -- the length of the edge in grid units
     public float Flow;
 
-    public FlowEdge(FlowNode zoneMiddle, FlowNode gateMiddle, float edgeLength, float gateWidth)
+    public FlowEdge(FlowNode start, FlowNode end, float edgeLength, float gateWidth)
     {
-        if (zoneMiddle.Id < gateMiddle.Id)
+        if (start.Id < end.Id)
         {
-            Start = zoneMiddle;
-            End = gateMiddle;
+            Start = start;
+            End = end;
         }
         else
         {
-            End = zoneMiddle;
-            Start = gateMiddle;
+            End = start;
+            Start = end;
         }
 
         EdgeLength = edgeLength;

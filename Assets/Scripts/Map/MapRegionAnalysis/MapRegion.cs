@@ -7,11 +7,13 @@ public class MapRegion
     public int ID;
     public List<RegionGateway> gateways;
     public Coord centre;
+    public int numberOfTiles;
 
     public MapRegion(int iD, Coord coord)
     {
         ID = iD;
         gateways = new List<RegionGateway>();
         centre = coord;
+        numberOfTiles = 1;
     }
 }

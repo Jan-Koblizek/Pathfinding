@@ -95,6 +95,7 @@ public class WaterDecomposition
                         // Use circleMap to fill in height for tile
                         for (int it = 0; it < circleMap[distance].Count; it++)
                         {
+                            //counter = 0;
                             int cX = circleMap[distance][it].X; //circleX
                             int cY = circleMap[distance][it].Y; //circleY
                                                                 //			Check all 4 quadrants!!!
@@ -253,6 +254,7 @@ public class WaterDecomposition
                     {
                         Coord coord = tilesWithNeighbors[i].Item2;
                         regionMap[coord.X, coord.Y] = tilesWithNeighbors[i].Item1;
+                        mapRegions[tilesWithNeighbors[i].Item1].numberOfTiles++;
                         currentDepthCoords.Remove(coord);
                     }
                     tilesWithNeighbors.Clear();
@@ -273,6 +275,8 @@ public class WaterDecomposition
 
     private void buildGates(bool[,] map, int mapWidth, int mapHeight, ref int[,] regionMap, out List<RegionGateway> gateways, ref List<MapRegion> mapRegions)
     {
+        gateways = new List<RegionGateway>();
+        //return;
         int[,] gateClusterMap;
         gateClusterMap = new int[mapWidth, mapHeight];
         for (int i = 0; i < mapWidth; ++i)
@@ -301,7 +305,6 @@ public class WaterDecomposition
             }
         }
 
-        gateways = new List<RegionGateway>();
         for (int i = 0; i < mapWidth; ++i)
         {
             for (int j = 0; j < mapHeight; ++j)
@@ -383,7 +386,6 @@ public class WaterDecomposition
                         {
                             int x = gateClusterCoords[0].X;
                             int y = gateClusterCoords[0].Y;
-                            Debug.Log("weirdGate");
                             gateways.Add(new RegionGateway(new Coord(x, y), new Coord(x, y), region1, region2, gateways.Count));
                         }
                         //if 2 tiles left in gateClusterTiles
@@ -453,10 +455,13 @@ public class WaterDecomposition
 
     private bool partiallySurrounded(Coord coord, bool[,] map)
     {
-        bool upper = map[coord.X, coord.Y + 1];
-        bool lower = map[coord.X, coord.Y - 1];
-        bool left = map[coord.X - 1, coord.Y];
-        bool right = map[coord.X + 1, coord.Y];
+        int width = map.GetLength(0);
+        int height = map.GetLength(1);
+
+        bool upper = coord.Y + 1 < height && map[coord.X, coord.Y + 1];
+        bool lower = coord.Y - 1 >= 0 && map[coord.X, coord.Y - 1];
+        bool left = coord.X - 1 >= 0 && map[coord.X - 1, coord.Y];
+        bool right = coord.X + 1 < width && map[coord.X + 1, coord.Y];
 
         int counter = 0;
         if (upper) counter++;
@@ -531,9 +536,10 @@ public class WaterDecomposition
         if (Vector2.Angle(regionDirection, right) < 90) directions.Add(right);
 
         Queue<Coord> processedCoords = new Queue<Coord>(gateTiles);
+        int counter = 0;
         while (processedCoords.Count > 0)
         {
-            /*
+
             if (counter > 100)
             {
                 Debug.Log($"Coord: X {processedCoords.Peek().X}, Y {processedCoords.Peek().Y}"); 
@@ -542,7 +548,6 @@ public class WaterDecomposition
                 break;
             }
             counter++;
-            */
             Coord coord = processedCoords.Dequeue();
             if (regionMap[coord.X, coord.Y] == otherRegionID) 
                 regionMap[coord.X, coord.Y] = regionID;
@@ -567,6 +572,6 @@ public class WaterDecomposition
     }
     private float octileDistance(int deltaX, int deltaY)
     {
-        return (float)Mathf.Max(deltaX, deltaY);// + 0.4f * Mathf.Min(deltaX, deltaY);
+        return (float)Mathf.Max(deltaX, deltaY) + 0.4f * Mathf.Min(deltaX, deltaY);
     }
 }

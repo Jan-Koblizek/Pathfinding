@@ -543,7 +543,7 @@ public static class Pathfinding
         {
             for (int y = 0; y < Map.instance.tiles.GetLength(1); y++)
             {
-                if (Map.instance.tiles[x, y].obstructed)
+                if (Map.instance.tiles[x, y].obstructed || distanceField[x,y] == null)
                 {
                     flowField[x, y] = new Vector2(0.0f, 0.0f);
                 }
@@ -555,9 +555,12 @@ public static class Pathfinding
                     bool modified = false;
                     foreach (NeighborWithDistance neighbor in neighbors)
                     {
-                        float newDistace = origDistance - (origDistance - distanceField[neighbor.coord.X, neighbor.coord.Y].distance) / neighbor.distance;
-                        direction += new Vector2(neighbor.coord.X - x, neighbor.coord.Y - y) * Mathf.Clamp((origDistance - newDistace), -4, 4);
-                        modified = true;
+                        if (distanceField[neighbor.coord.X, neighbor.coord.Y] != null)
+                        {
+                            float newDistace = origDistance - (origDistance - distanceField[neighbor.coord.X, neighbor.coord.Y].distance) / neighbor.distance;
+                            direction += new Vector2(neighbor.coord.X - x, neighbor.coord.Y - y) * Mathf.Clamp((origDistance - newDistace), -4, 4);
+                            modified = true;
+                        }
                     }
                     if (modified)
                     {

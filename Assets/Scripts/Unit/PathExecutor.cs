@@ -102,7 +102,7 @@ public class PathExecutor
             return true;
         else
         {
-            targetUpdateTime = 0;
+            targetUpdateTime = UnityEngine.Random.Range(-0.5f, 0.5f);
             return false;
         }
     }

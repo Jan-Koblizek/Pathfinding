@@ -1237,7 +1237,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 14722e606629c82419cc311c26b3902b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  simulationSpecification: {fileID: 11400000, guid: 59e74a0d1d2762948ac368480a36c8d5, type: 2}
+  simulationSpecification: {fileID: 11400000, guid: fc81db668b6b16445885cbd9a4b638a1, type: 2}
   regionIndicator: {fileID: 3040590390997768235, guid: 5c549fd487d9eb04781f321e1eac150e, type: 3}
   unitMovementManager: {fileID: 1257111349}
   unitPrefab: {fileID: 6790476649160748438, guid: 7d37d28fa24eafa4aaced73f99b47fe7, type: 3}

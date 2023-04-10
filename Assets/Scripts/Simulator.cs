@@ -33,6 +33,8 @@ public class Simulator : MonoBehaviour
     [HideInInspector]
     public RegionalPathfindingAnalysis regionalPathfinding;
     [HideInInspector]
+    public RegionalPathfindingPathsAnalysis regionalPathfindingPaths;
+    [HideInInspector]
     public PartialFlowGraph partialFlowGraph;
 
     float secondTimer = 1.0f;
@@ -144,7 +146,15 @@ public class Simulator : MonoBehaviour
                 List<(Vector2 flowDirection, float distanceToGate)[,]> flowMaps2 = MapRegionPathfinding.CreateFlowMaps(decomposition);
                 Dictionary<RegionGateway, Dictionary<RegionGateway, float>> distances2 = MapRegionPathfinding.DistancesBetweenGates(decomposition);
                 regionalPathfinding = new RegionalPathfindingAnalysis(decomposition, flowMaps2, distances2);
-                partialFlowGraph = PartialFlowGraph.PartialFlowGraphFromDecomposition(decomposition);
+                partialFlowGraph = PartialFlowGraph.PartialFlowGraphFromDecomposition(decomposition, distances2);
+                break;
+            case MovementMode.RegionalFlowGraphPaths:
+                waterDecomposition = new WaterDecomposition();
+                decomposition = waterDecomposition.Decompose(Map.instance.tiles, -1);
+                (Dictionary<RegionGateway, Dictionary<RegionGateway, float>> distances, Dictionary<RegionGateway, Dictionary<RegionGateway, List<Vector2>>> paths) pathsAndDistances;
+                pathsAndDistances = MapRegionPathfinding.DistancesAndPathsBetweenGates(decomposition);
+                regionalPathfindingPaths = new RegionalPathfindingPathsAnalysis(decomposition, pathsAndDistances.paths, pathsAndDistances.distances);
+                partialFlowGraph = PartialFlowGraph.PartialFlowGraphFromDecomposition(decomposition, pathsAndDistances.distances);
                 break;
             default:
                 break;
@@ -205,5 +215,6 @@ public enum MovementMode
     SupremeCommanderFlowField,
     RegionalPath,
     FlowGraph,
-    RegionalFlowGraph
+    RegionalFlowGraph,
+    RegionalFlowGraphPaths
 }

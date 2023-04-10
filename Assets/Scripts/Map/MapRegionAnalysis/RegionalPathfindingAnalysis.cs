@@ -35,3 +35,30 @@ public class RegionalPath
 
     public RegionalPath() { }
 }
+
+public class RegionalPathfindingPathsAnalysis
+{
+    public RegionalDecomposition decomposition;
+    public Dictionary<RegionGateway, Dictionary<RegionGateway, List<Vector2>>> gatewayPaths;
+    public Dictionary<RegionGateway, Dictionary<RegionGateway, float>> distancesBetweenGates;
+
+    public RegionalPathfindingPathsAnalysis(RegionalDecomposition decomposition, Dictionary<RegionGateway, Dictionary<RegionGateway, List<Vector2>>> gatewayPaths, Dictionary<RegionGateway, Dictionary<RegionGateway, float>> distancesBetweenGates)
+    {
+        this.decomposition = decomposition;
+        this.gatewayPaths = gatewayPaths;
+        this.distancesBetweenGates = distancesBetweenGates;
+    }
+}
+
+public class RegionalPathUsingSubPaths
+{
+    public RegionalPathfindingPathsAnalysis regionalPathfindingAnalysis;
+    public Dictionary<int, int> regionDirections;
+    public Dictionary<int, int> gatewayDirections;
+    public List<RegionGateway> gatewayPath;
+    public List<Vector2> finalPath;
+    public List<Vector2> startingPath;
+    public Coord goalCoord;
+
+    public RegionalPathUsingSubPaths() { }
+}
