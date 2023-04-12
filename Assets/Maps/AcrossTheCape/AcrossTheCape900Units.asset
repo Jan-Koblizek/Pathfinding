@@ -14,13 +14,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   mapTexture: {fileID: 2800000, guid: 318f213a58bfed2469ed87a6ad7a70bf, type: 3}
   unitStartMap: {fileID: 2800000, guid: 1b19be35c2a28fb458b676218a25cfb7, type: 3}
-  targetPosition: {x: 125, y: 241}
-  targetSize: 8
+  targetPosition: {x: 250, y: 482}
+  targetSize: 12
   warmUpGoalPositions:
-  - {x: 232, y: 232}
-  - {x: 232, y: 17}
-  - {x: 17, y: 232}
+  - {x: 464, y: 464}
+  - {x: 464, y: 34}
+  - {x: 34, y: 464}
   warmUpStartPositions:
-  - {x: 132, y: 92}
-  - {x: 132, y: 17}
-  - {x: 25, y: 122}
+  - {x: 264, y: 184}
+  - {x: 264, y: 34}
+  - {x: 50, y: 244}

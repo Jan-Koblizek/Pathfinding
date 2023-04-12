@@ -138,10 +138,21 @@ public class Unit : MonoBehaviour
         ApplyForce(force);
         Vector2 movement = velocity * Time.deltaTime;
         Vector2 newPosition = new Vector2(position.x + movement.x, position.y + movement.y);
+        Vector2 newPositionX = new Vector2(position.x + movement.x, position.y);
+        Vector2 newPositionY = new Vector2(position.x, position.y + movement.y);
         if (Map.instance.walls.IsInWallsUnit(position))
         {
             Debug.Log("Unit in the walls");
         }
+        if (Map.instance.walls.IsInWallsUnit(newPosition) && !Map.instance.walls.IsInWallsUnit(newPositionX))
+        {
+            newPosition = newPositionX;
+        }
+        else if (Map.instance.walls.IsInWallsUnit(newPosition) && !Map.instance.walls.IsInWallsUnit(newPositionY))
+        {
+            newPosition = newPositionY;
+        }
+
         if (!Map.instance.walls.IsInWallsUnit(newPosition) && !nearbyUnitsManager.NearbyPositionOccupied(newPosition)) {
             position = newPosition;
             transform.position = position;

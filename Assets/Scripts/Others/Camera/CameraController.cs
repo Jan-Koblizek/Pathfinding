@@ -45,9 +45,9 @@ public class CameraController : MonoBehaviour
             scrollDelta = Mathf.Min(Input.mouseScrollDelta.y, previousScrollDelta * 5.0f * (0.2f - Time.deltaTime) + 0.05f);
         }
         previousScrollDelta = scrollDelta;
-        if ((cam.orthographicSize < 20 && cam.orthographicSize > 8) || (cam.orthographicSize >= 20 && scrollDelta > 0.0) || (cam.orthographicSize <= 8 && scrollDelta < 0.0))
+        if ((cam.orthographicSize < 100 && cam.orthographicSize > 8) || (cam.orthographicSize >= 100 && scrollDelta > 0.0) || (cam.orthographicSize <= 8 && scrollDelta < 0.0))
         {
-            cam.orthographicSize -= 20.0f * scrollDelta * Time.deltaTime;
+            cam.orthographicSize -= (cam.orthographicSize + 10) * scrollDelta * Time.deltaTime;
         }
         UpdateBounds(); //the camera bounds may have changed because of zooming
 

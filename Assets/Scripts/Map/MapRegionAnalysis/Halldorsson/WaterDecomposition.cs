@@ -4,6 +4,7 @@ using Unity.VisualScripting;
 using UnityEditor.Search;
 using UnityEngine;
 using utils;
+using static UnityEditor.Experimental.AssetDatabaseExperimental.AssetDatabaseCounters;
 
 public class WaterDecomposition
 {
@@ -34,6 +35,7 @@ public class WaterDecomposition
         int maxDepthUsed;
         buildDepthMap(obstructionMap, wallThreshold, mapWidth, mapHeight, out depthMap, out maxDepthUsed);
         buildRegionsMap(obstructionMap, maxDepthUsed, mapWidth, mapHeight, ref depthMap, out regionMap, out mapRegions, out numberOfClusters);
+        refineRegions(obstructionMap, mapWidth, mapHeight, ref regionMap, ref depthMap, ref mapRegions);
         buildGates(obstructionMap, mapWidth, mapHeight, ref regionMap, out gateways, ref mapRegions);
         refineGates(obstructionMap, ref gateways, gateRegionIndex, ref regionMap);
         return new RegionalDecomposition(gateways, mapRegions, depthMap, numberOfClusters, regionMap, obstructionMap);
@@ -112,7 +114,7 @@ public class WaterDecomposition
                                         hitFirstWallDist = distance;
                                         if (dynamicWallThreshold)
                                         {
-                                            wallThreshold = (maxDist - distance) / 8 + 1;
+                                            wallThreshold = (maxDist - distance) / 16 + 1;
                                         }
                                     }
                                     ++counter;
@@ -273,10 +275,203 @@ public class WaterDecomposition
         numberOfClusters = currentClusterID;
     }
 
+    private void refineRegions(bool[,] map, int mapWidth, int mapHeight, ref int[,] regionMap, ref int[,] depthMap, ref List<MapRegion> regions)
+    {
+        Dictionary<int, Dictionary<int, (int totalGateTiles, int maxGateDepth, Coord gateCentre)>> mapRegionNeighbors = new Dictionary<int, Dictionary<int, (int totalGateTiles, int maxGateDepth, Coord gateCentre)>>();
+        for (int i = 0; i < mapWidth; ++i)
+        {
+            for (int j = 0; j < mapHeight; ++j)
+            {
+                if (map[i, j])
+                {
+                    int dX = 1; //directionX
+                    int dY = 0; //directionY
+                    Dictionary<int, (int, Coord)> neighbors = new Dictionary<int, (int, Coord)>();
+                    int region = regionMap[i, j];
+                    for (int direction = 0; direction < 4; ++direction)
+                    {
+                        int tmpX = dX; dX = -dY; dY = tmpX;
+                        int nX = i + dX; //neighborX
+                        int nY = j + dY; //neighborY
+                        if (coordsInsideMapAndSomeZone(nX, nY, mapWidth, mapHeight, ref regionMap))
+                        {
+                            int otherRegion = regionMap[nX, nY];
+                            if (otherRegion != region)
+                            {
+                                if (!neighbors.ContainsKey(region))
+                                {
+                                    neighbors[otherRegion] = (0, new Coord(0, 0));
+                                }
+                                if (neighbors[otherRegion].Item1 < depthMap[nX, nY])
+                                {
+                                    neighbors[otherRegion] = (depthMap[nX, nY], new Coord(nX, nY));
+                                }
+                            }
+                        }
+                    }
+                    foreach (KeyValuePair<int, (int, Coord)> pair in neighbors)
+                    {
+                        if (!mapRegionNeighbors.ContainsKey(region))
+                        {
+                            mapRegionNeighbors[region] = new Dictionary<int, (int totalGateTiles, int maxGateDepth, Coord gateCentrePosition)>();
+                        }
+                        if (!mapRegionNeighbors[region].ContainsKey(pair.Key))
+                        {
+                            mapRegionNeighbors[region][pair.Key] = (0, 0, new Coord(0, 0));
+                        }
+
+                        (int totalGateTiles, int maxGateDepth, Coord gateCentre) dictValue = mapRegionNeighbors[region][pair.Key];
+                        dictValue.totalGateTiles++;
+                        if (pair.Value.Item1 > dictValue.maxGateDepth)
+                        {
+                            dictValue.maxGateDepth = pair.Value.Item1;
+                            dictValue.gateCentre = pair.Value.Item2;
+                        }
+                        mapRegionNeighbors[region][pair.Key] = dictValue;
+                    }
+                }
+            }
+        }
+        //int counter = 0;
+        bool mergingDone = true;
+        while (mergingDone) {
+            TryToMergeRegions(ref mapRegionNeighbors, ref regionMap, ref depthMap, ref regions, out mergingDone);
+            //counter++;
+        }
+    }
+
+    private void TryToMergeRegions(ref Dictionary<int, Dictionary<int, (int totalGateTiles, int maxGateDepth, Coord gateCentre)>> mapRegionNeighbors, ref int[,] regionMap, ref int[,] depthMap, ref List<MapRegion> regions, out bool mergingPerformed)
+    {
+        mergingPerformed = false;
+        Dictionary<int, int> mergingDictionary = new Dictionary<int, int>();
+        HashSet<int> regionsNotMerged = new HashSet<int>();
+        HashSet<int> regionsNotMergedInto = new HashSet<int>();
+
+        foreach (KeyValuePair<int, Dictionary<int, (int totalGateTiles, int maxGateDepth, Coord gateCentre)>> regionInfo in mapRegionNeighbors)
+        {
+            MapRegion region = regions[regionInfo.Key];
+            int regionDepth = depthMap[region.centre.X, region.centre.Y];
+
+            List<(int regionId, int gateTilesCount)> mergingCandidates = new List<(int regionId, int gateTilesCount)>();
+            foreach (KeyValuePair<int, (int totalGateTiles, int maxGateDepth, Coord gateCentre)> otherRegionInfo in mapRegionNeighbors[regionInfo.Key])
+            {
+                MapRegion otherRegion = regions[otherRegionInfo.Key];
+                int otherRegionDepth = depthMap[otherRegion.centre.X, otherRegion.centre.Y];
+                if (!mergingDictionary.ContainsKey(regionInfo.Key) && !regionsNotMerged.Contains(regionInfo.Key) && !regionsNotMergedInto.Contains(otherRegionInfo.Key) && regionDepth <= otherRegionDepth)
+                {
+                    if (otherRegionInfo.Value.maxGateDepth >= Mathf.Floor(regionDepth * 0.9f))
+                    {
+                        mergingCandidates.Add((otherRegionInfo.Key, otherRegionInfo.Value.totalGateTiles));
+                    }
+                    else if (mapRegionNeighbors[otherRegion.ID][region.ID].maxGateDepth >= Mathf.Floor(regionDepth * 0.9f))
+                    {
+                        mergingCandidates.Add((otherRegionInfo.Key, otherRegionInfo.Value.totalGateTiles));
+                    }
+                    /*
+                    else if (region.numberOfTiles <= otherRegionInfo.Value.totalGateTiles * 4)
+                    {
+                        Debug.Log($"Region depth {regionDepth}, gate depth {otherRegionInfo.Value.maxGateDepth}, other gate depth {mapRegionNeighbors[otherRegion.ID][region.ID].maxGateDepth}");
+                        mergingCandidates.Add((otherRegionInfo.Key, otherRegionInfo.Value.totalGateTiles));
+                    }
+                    */
+                }
+            }
+            if (mergingCandidates.Count > 0)
+            {
+                mergingCandidates.Sort((x, y) => x.gateTilesCount.CompareTo(y.gateTilesCount));
+                mergingDictionary[regionInfo.Key] = mergingCandidates[mergingCandidates.Count-1].regionId;
+                regionsNotMerged.Add(regionInfo.Key);
+                regionsNotMerged.Add(mergingCandidates[mergingCandidates.Count - 1].regionId);
+                regionsNotMergedInto.Add(regionInfo.Key);
+            }
+
+        }
+
+        foreach (KeyValuePair<int, int> mergedRegions in mergingDictionary)
+        {
+            MapRegion smallerRegion = regions[mergedRegions.Key];
+            MapRegion biggerRegion = regions[mergedRegions.Value];
+            Dictionary<int, (int totalGateTiles, int maxGateDepth, Coord gateCentre)> smallerRegionInfo = mapRegionNeighbors[smallerRegion.ID];
+            mapRegionNeighbors.Remove(smallerRegion.ID);
+            foreach (KeyValuePair<int, (int totalGateTiles, int maxGateDepth, Coord gateCentre)> smallerRegionNeighbor in smallerRegionInfo)
+            {
+                if (smallerRegionNeighbor.Key != biggerRegion.ID)
+                {
+                    if (!mapRegionNeighbors[biggerRegion.ID].ContainsKey(smallerRegionNeighbor.Key))
+                    {
+                        mapRegionNeighbors[biggerRegion.ID][smallerRegionNeighbor.Key] = (smallerRegionNeighbor.Value.totalGateTiles, smallerRegionNeighbor.Value.maxGateDepth, smallerRegionNeighbor.Value.gateCentre);
+                        (int totalGateTiles, int maxGateDepth, Coord gateCentre) opposite = mapRegionNeighbors[smallerRegionNeighbor.Key][smallerRegion.ID];
+                        mapRegionNeighbors[smallerRegionNeighbor.Key].Remove(smallerRegion.ID);
+                        mapRegionNeighbors[smallerRegionNeighbor.Key][biggerRegion.ID] = opposite;
+                    }
+                    else
+                    {
+                        (int totalGateTiles, int maxGateDepth, Coord gateCentre) biggerRegionNeighborInfo = mapRegionNeighbors[biggerRegion.ID][smallerRegionNeighbor.Key];
+                        (int totalGateTiles, int maxGateDepth, Coord gateCentre) biggerRegionNeighborInfoOpposite = mapRegionNeighbors[smallerRegionNeighbor.Key][biggerRegion.ID];
+
+                        mapRegionNeighbors[biggerRegion.ID][smallerRegionNeighbor.Key] = (
+                                            smallerRegionNeighbor.Value.totalGateTiles + biggerRegionNeighborInfo.totalGateTiles,
+                                            Mathf.Max(smallerRegionNeighbor.Value.maxGateDepth, biggerRegionNeighborInfo.maxGateDepth),
+                                            smallerRegionNeighbor.Value.maxGateDepth > biggerRegionNeighborInfo.maxGateDepth ? smallerRegionNeighbor.Value.gateCentre : biggerRegionNeighborInfo.gateCentre
+                                            );
+                        (int totalGateTiles, int maxGateDepth, Coord gateCentre) opposite = mapRegionNeighbors[smallerRegionNeighbor.Key][smallerRegion.ID];
+                        mapRegionNeighbors[smallerRegionNeighbor.Key].Remove(smallerRegion.ID);
+                        mapRegionNeighbors[smallerRegionNeighbor.Key][biggerRegion.ID] = (
+                                            opposite.totalGateTiles + biggerRegionNeighborInfoOpposite.totalGateTiles,
+                                            Mathf.Max(opposite.maxGateDepth, biggerRegionNeighborInfoOpposite.maxGateDepth),
+                                            opposite.maxGateDepth > biggerRegionNeighborInfoOpposite.maxGateDepth ? opposite.gateCentre : biggerRegionNeighborInfoOpposite.gateCentre
+                                            );
+                    }
+                }
+            }
+            mapRegionNeighbors[biggerRegion.ID].Remove(smallerRegion.ID);
+            MergeRegions(smallerRegion, biggerRegion, ref regionMap);
+            mergingPerformed = true;
+        }
+    }
+
+    private void MergeRegions(MapRegion smallerRegion, MapRegion biggerRegion, ref int[,] regionMap)
+    {
+        biggerRegion.numberOfTiles += smallerRegion.numberOfTiles;
+        smallerRegion.numberOfTiles = 0;
+        int x = smallerRegion.centre.X;
+        int y = smallerRegion.centre.Y;
+        int mapWidth = regionMap.GetLength(0);
+        int mapHeight = regionMap.GetLength(1);
+
+        regionMap[x, y] = biggerRegion.ID;
+        bool inTheRegion = true;
+        int distance = 1;
+        while (inTheRegion)
+        {
+            inTheRegion = false;
+            for (int it = 0; it < circleMap[distance].Count; it++)
+            {
+                //counter = 0;
+                int cX = circleMap[distance][it].X; //circleX
+                int cY = circleMap[distance][it].Y; //circleY
+                                                    //			Check all 4 quadrants!!!
+                for (int quadrant = 0; quadrant < 4; ++quadrant)
+                {
+                    int tmpX = cX; cX = -cY; cY = tmpX;
+                    int mX = x + cX; //mapX
+                    int mY = y + cY; //mapY
+
+                    if (mX >= 0 && mX < mapWidth && mY >= 0 && mY < mapHeight && regionMap[mX, mY] == smallerRegion.ID)
+                    {
+                        inTheRegion = true;
+                        regionMap[mX, mY] = biggerRegion.ID;
+                    }
+                }
+            }
+            ++distance;
+        }
+    }
+
     private void buildGates(bool[,] map, int mapWidth, int mapHeight, ref int[,] regionMap, out List<RegionGateway> gateways, ref List<MapRegion> mapRegions)
     {
         gateways = new List<RegionGateway>();
-        //return;
+
         int[,] gateClusterMap;
         gateClusterMap = new int[mapWidth, mapHeight];
         for (int i = 0; i < mapWidth; ++i)
@@ -424,6 +619,7 @@ public class WaterDecomposition
                                     int x2 = coord2.X;
                                     int y2 = coord2.Y;
                                     int distSqr = (x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2);
+                                    
                                     if (distSqr > maxDistSqr)
                                     {
                                         maxDistSqr = distSqr;
@@ -436,6 +632,7 @@ public class WaterDecomposition
                                 }
                                 i1++;
                             }
+                            
                             bool surrounded = partiallySurrounded(start, map) || partiallySurrounded(end, map);
                             gateways.Add(new RegionGateway(start, end, region1, region2, gateways.Count, surrounded));
                         }
@@ -482,21 +679,6 @@ public class WaterDecomposition
             Vector2 position = gate.start.GetWorldPosition();
             float distance = (gate.end.GetWorldPosition() - gate.start.GetWorldPosition()).magnitude;
             Vector2 direction = (gate.end.GetWorldPosition() - gate.start.GetWorldPosition()).normalized;
-            Vector2 regionDirection1 = direction.Rotate(90);
-            Vector2 regionDirection2 = direction.Rotate(-90);
-            Vector2 directionToRegionA = (gate.regionA.centre.GetWorldPosition() - position).normalized;
-            Vector2 directionToRegionB = (gate.regionB.centre.GetWorldPosition() - position).normalized;
-
-            if (Vector2.Angle(regionDirection1, directionToRegionA) < Vector2.Angle(regionDirection1, directionToRegionB))
-            {
-                gate.regionADirection = regionDirection1;
-                gate.regionBDirection = regionDirection2;
-            }
-            else
-            {
-                gate.regionADirection = regionDirection2;
-                gate.regionBDirection = regionDirection1;
-            }
 
             if (Mathf.Abs(direction.x) > Mathf.Abs(direction.y))
             {
@@ -518,6 +700,26 @@ public class WaterDecomposition
                 distanceCovered++;
             }
             gateRegionIndex++;
+
+            Vector2 regionDirection1 = direction.Rotate(90);
+            Vector2 regionDirection2 = direction.Rotate(-90);
+            //Vector2 directionToRegionA = (gate.regionA.centre.GetWorldPosition() - position).normalized;
+            //Vector2 directionToRegionB = (gate.regionB.centre.GetWorldPosition() - position).normalized;
+            Coord sampleCoord = Coord.CoordFromPosition(regionDirection1 * gate.gateTilesCoords.Count * 0.5f + gate.GetCentralPosition());
+            int sample = regionMap[sampleCoord.X, sampleCoord.Y];
+
+            //if (Vector2.Angle(regionDirection1, directionToRegionA) < Vector2.Angle(regionDirection1, directionToRegionB))
+            if (sample == gate.regionA.ID)
+            {
+                gate.regionADirection = regionDirection1;
+                gate.regionBDirection = regionDirection2;
+            }
+            else
+            {
+                gate.regionADirection = regionDirection2;
+                gate.regionBDirection = regionDirection1;
+            }
+
             clearRegionAroundTheGate(gate.regionADirection, gate.regionA.ID, gate.regionB.ID, gate.gateTilesCoords, ref regionMap);
             clearRegionAroundTheGate(gate.regionBDirection, gate.regionB.ID, gate.regionA.ID, gate.gateTilesCoords, ref regionMap);
         }
@@ -536,11 +738,11 @@ public class WaterDecomposition
         if (Vector2.Angle(regionDirection, right) < 90) directions.Add(right);
 
         Queue<Coord> processedCoords = new Queue<Coord>(gateTiles);
-        int counter = 0;
+        //int counter = 0;
         while (processedCoords.Count > 0)
         {
-
-            if (counter > 100)
+            /*
+            if (counter > 1000)
             {
                 Debug.Log($"Coord: X {processedCoords.Peek().X}, Y {processedCoords.Peek().Y}"); 
                 Debug.Log(regionID);
@@ -548,6 +750,7 @@ public class WaterDecomposition
                 break;
             }
             counter++;
+            */
             Coord coord = processedCoords.Dequeue();
             if (regionMap[coord.X, coord.Y] == otherRegionID) 
                 regionMap[coord.X, coord.Y] = regionID;

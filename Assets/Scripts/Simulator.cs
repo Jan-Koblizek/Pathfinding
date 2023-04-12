@@ -13,9 +13,9 @@ public class Simulator : MonoBehaviour
     public GameObject targetPrefab;
     public MovementMode movementMode;
 
-    //[HideInInspector]
+    [HideInInspector]
     public List<Vector2> warmUpStartPositions;
-    //[HideInInspector]
+    [HideInInspector]
     public List<Vector2> warmUpTargetPositions;
 
     private float simulationTime;

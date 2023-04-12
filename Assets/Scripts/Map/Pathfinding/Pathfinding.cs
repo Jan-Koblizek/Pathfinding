@@ -373,6 +373,93 @@ public static class Pathfinding
         }
     }
 
+    public static Stack<Vector2> ConstructPathAStar(List<Coord> startRegion, List<Coord> goalRegion, System.Func<Coord, Coord, float> heuristic, float nearObstaclePenalty, ref int[,] regionMap, int region)
+    {
+        Coord goal = null;
+        int width = Map.instance.tiles.GetLength(0);
+        int height = Map.instance.tiles.GetLength(1);
+        pathfindingGrid = new PathfindingCell[width, height];
+        queueAStar = new PriorityQueue<float, Coord>();
+        Vector2 startRegionSum = new Vector2();
+        for (int i = 0; i < startRegion.Count; i++)
+        {
+            startRegionSum += startRegion[i].GetWorldPosition();
+        }
+        Vector2 startRegionCentre = startRegionSum / startRegion.Count;
+        Coord heuristicGoal = goalRegion[0];
+        float minGoalDistance = Vector2.Distance(heuristicGoal.GetWorldPosition(), startRegionCentre);
+        for (int i = 1; i < goalRegion.Count; i++)
+        {
+            float distance = Vector2.Distance(goalRegion[i].GetWorldPosition(), startRegionCentre);
+            if (distance < minGoalDistance)
+            {
+                minGoalDistance = distance;
+                heuristicGoal = goalRegion[i];
+            }
+        }
+
+        foreach (Coord coord in startRegion)
+        {
+            pathfindingGrid[coord.X, coord.Y] = new PathfindingCell(0.0f, false, new Coord(-1, -1));
+            queueAStar.Enqueue(heuristic(coord, heuristicGoal), coord);
+        }
+        bool finished = false;
+        while (!finished && queueAStar.Count() != 0)
+        {
+            ItemWithPriority<float, Coord> processed = queueAStar.Dequeue();
+            if (!pathfindingGrid[processed.item.X, processed.item.Y].closed)
+            {
+                pathfindingGrid[processed.item.X, processed.item.Y].closed = true;
+                if (goalRegion.Contains(processed.item))
+                {
+                    goal = processed.item;
+                    //Debug.Log("goal found");
+                    queueAStar.Clear();
+                    finished = true;
+                    break;
+                }
+                List<NeighborWithDistance> neighbors = GetNeighborsAStar(processed.item, out bool someNeighborObstructed);
+                float currentDistance = pathfindingGrid[processed.item.X, processed.item.Y].distance;
+                foreach (NeighborWithDistance neighbor in neighbors)
+                {
+                    if (regionMap[neighbor.coord.X, neighbor.coord.Y] == region)
+                    {
+                        float storedNeighborDistance = pathfindingGrid[neighbor.coord.X, neighbor.coord.Y].distance;
+                        float neighborHeuristic = heuristic(neighbor.coord, heuristicGoal);
+                        if (storedNeighborDistance > (currentDistance + neighbor.distance))
+                        {
+                            pathfindingGrid[neighbor.coord.X, neighbor.coord.Y].predecessor = processed.item;
+                            pathfindingGrid[neighbor.coord.X, neighbor.coord.Y].distance = currentDistance + (someNeighborObstructed ? 1.0f + nearObstaclePenalty : 1.0f) * neighbor.distance;
+                            queueAStar.Enqueue(neighborHeuristic + currentDistance + neighbor.distance, neighbor.coord);
+                        }
+                    }
+                }
+            }
+        }
+        if (finished)
+        {
+            Stack<Vector2> result = new();
+            result.Push(goal.GetWorldPosition());
+            if (!startRegion.Contains(goal))
+            {
+                Coord coord = pathfindingGrid[goal.X, goal.Y].predecessor;
+                while (!startRegion.Contains(coord))
+                {
+                    result.Push(coord.GetWorldPosition());
+                    coord = pathfindingGrid[coord.X, coord.Y].predecessor;
+                }
+                result.Push(coord.GetWorldPosition());
+            }
+            //result = SimplifyPath(result);
+            return result;
+        }
+        else
+        {
+            Debug.Log("No path available");
+            return null;
+        }
+    }
+
     public static Stack<Vector2> ConstructPathAStar(List<Coord> startRegion, List<Coord> goalRegion, System.Func<Coord, Coord, float> heuristic, float nearObstaclePenalty)
     {
         Coord goal = null;
@@ -456,43 +543,6 @@ public static class Pathfinding
             return null;
         }
     }
-
-    /*
-    public static Stack<Vector3> PathWithOffset(Stack<Vector3> original, Vector3 position, int number, int totalNumber, bool inverse)
-    {
-        Vector3 lastDirection = new Vector3(0.0f, 0.0f, 0.0f);
-        Vector3[] originalArray = original.ToArray();
-        Stack<Vector3> result = new();
-        for (int i = originalArray.Length - 1; i > 0; i--)
-        {
-            Vector3 direction = originalArray[i] - originalArray[i - 1];
-            direction.Normalize();
-            if (lastDirection.magnitude > 0.001 && Vector3.Angle(direction, lastDirection) > 90)
-            {
-                inverse = !inverse;
-            }
-            Vector2 direction2D = new(direction.x, direction.z);
-            Vector2 relativePosition = BasicFormation.getRelativePosition(number, totalNumber, direction2D, inverse);
-            result.Push(originalArray[i] + (new Vector3(relativePosition.x, 0.0f, relativePosition.y)));
-            if (i > 1) result.Push(originalArray[i - 1] + (new Vector3(relativePosition.x, 0.0f, relativePosition.y)));
-        }
-        Vector3 direction2 = originalArray[1] - originalArray[0];
-        direction2.Normalize();
-        Vector2 direction2D2 = new(direction2.x, direction2.z);
-        Vector2 relativePosition2 = BasicFormation.getRelativePosition(number, totalNumber, direction2D2, inverse);
-        Vector3 startPos = originalArray[0] + (new Vector3(relativePosition2.x, 0.0f, relativePosition2.y));
-
-        if (Vector3.Distance(startPos, position) > 2)
-        {
-            Stack<Vector3> pathToStart = Pathfinding.ConstructPathAStar(startPos, position, Pathfinding.StepDistance, 0.2f);
-            foreach (Vector3 point in pathToStart)
-            {
-                result.Push(point);
-            }
-        }
-        return result;
-    }
-    */
 
     public static PathfindingCell[,] ConstructDistanceField(Coord goal)
     {
