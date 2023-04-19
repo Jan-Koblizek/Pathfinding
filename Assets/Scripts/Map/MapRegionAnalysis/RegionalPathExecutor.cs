@@ -43,7 +43,7 @@ public class RegionalPathExecutor
         return new Vector2(0, 0);
     }
 
-    public Vector2 GetSeekForce()
+    public Vector2 GetSeekForce(float deltaTime)
     {
         int currentRegion = decomposition.regionMap[unit.currentCoord.X, unit.currentCoord.Y];
         if (regionalPath.gatewayDirections.ContainsKey(currentRegion - RegionalDecomposition.GatewayIndexOffset) ||
@@ -68,14 +68,14 @@ public class RegionalPathExecutor
         }
         else if (currentRegion == goalRegion)
         {
-            return followFinalPath();
+            return followFinalPath(deltaTime);
         }
         return new Vector2(0, 0);
     }
 
-    private Vector2 followFinalPath()
+    private Vector2 followFinalPath(float deltaTime)
     {
-        if (finalPathExecutor == null) finalPathExecutor = new PathExecutor(unit, regionalPath.finalPath);
-        return finalPathExecutor.GetPathFollowingForce();
+        if (finalPathExecutor == null) finalPathExecutor = new PathExecutor(unit, ref regionalPath.finalPath);
+        return finalPathExecutor.GetPathFollowingForce(deltaTime);
     }
 }

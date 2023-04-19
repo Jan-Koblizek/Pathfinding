@@ -4,8 +4,13 @@ using UnityEngine;
 
 public class Simulator : MonoBehaviour
 {
+    public bool automaticSimulation;
+    public int numberOfSimulations;
+    public List<MovementMode> movementModesTestedAutomatic;
+    public int internalMovementCycles;
+    public int outerMovementCycles;
+    public bool drawUnits = true;
     public SimulationSetup simulationSpecification;
-    public GameObject regionIndicator;
     public static Simulator Instance { get; private set; }
     public UnitMovementManager unitMovementManager;
     public GameObject unitPrefab;
@@ -19,6 +24,7 @@ public class Simulator : MonoBehaviour
     public List<Vector2> warmUpTargetPositions;
 
     private float simulationTime;
+    private float executionComputationTime;
     private int unitsReachedTarget;
     private int numberOfUnits;
     [HideInInspector]
@@ -37,14 +43,60 @@ public class Simulator : MonoBehaviour
     [HideInInspector]
     public PartialFlowGraph partialFlowGraph;
 
-    float secondTimer = 1.0f;
     private bool halfFinished = false;
 
     private void Start()
     {
         Instance = this;
         Map.instance.Initialize(simulationSpecification.mapTexture);
+
+        InitializeUnits();
+
+        warmUpStartPositions = simulationSpecification.warmUpStartPositions;
+        warmUpTargetPositions = simulationSpecification.warmUpGoalPositions;
+
+        target = Target.CreateTarget(simulationSpecification.targetPosition, simulationSpecification.targetSize, targetPrefab);
+        if (automaticSimulation)
+        {
+            StartCoroutine(SimulateAutomatic());
+        }
+    }
+
+    IEnumerator SimulateAutomatic()
+    {
+        foreach (MovementMode movementMode in movementModesTestedAutomatic)
+        {
+            this.movementMode = movementMode;
+            yield return new WaitForSeconds(0.5f);
+            StartPreparation();
+            yield return null;
+            yield return new WaitForSeconds(0.5f);
+            StartWarmUp();
+            yield return null;
+            yield return new WaitForSeconds(0.5f);
+            StartWarmUp();
+            yield return null;
+            yield return new WaitForSeconds(0.5f);
+
+            int i = 0;
+            while (i < numberOfSimulations)
+            {
+                StartSimulation();
+                yield return null;
+                while (!simulationFinished) yield return null;
+                yield return new WaitForSeconds(1.0f);
+                InitializeUnits();
+                i++;
+                yield return new WaitForSeconds(1.0f);
+            }
+            yield return null;
+        }
+    }
+
+    private void InitializeUnits()
+    {
         List<Unit> units = new List<Unit>();
+        List<UnitVisualization> unitVisualizations = new List<UnitVisualization>();
         for (int y = 0; y < simulationSpecification.unitStartMap.height; y++)
         {
             for (int x = 0; x < simulationSpecification.unitStartMap.width; x++)
@@ -52,30 +104,38 @@ public class Simulator : MonoBehaviour
                 Color pixel1 = simulationSpecification.unitStartMap.GetPixel(x, y);
                 if (pixel1.r > 0.5)
                 {
-                    GameObject go = Instantiate(unitPrefab, new Vector3(x, y, 0.0f), Quaternion.identity, unitsParent.transform);
-                    Unit unit = go.GetComponent<Unit>();
+                    Unit unit = new Unit();
+                    unit.Initialize(new Vector2(x, y));
                     units.Add(unit);
+                    if (drawUnits)
+                    {
+                        GameObject go = Instantiate(unitPrefab, new Vector3(x, y, 0.0f), Quaternion.identity, unitsParent.transform);
+                        UnitVisualization unitVisualization = go.GetComponent<UnitVisualization>();
+                        unitVisualizations.Add(unitVisualization);
+                    }
                 }
             }
         }
-        unitMovementManager.SetUnits(units);
-
-        warmUpStartPositions = simulationSpecification.warmUpStartPositions;
-        warmUpTargetPositions = simulationSpecification.warmUpGoalPositions;
-
-        target = Target.CreateTarget(simulationSpecification.targetPosition, simulationSpecification.targetSize, targetPrefab);
+        if (drawUnits)
+            unitMovementManager.SetUnits(units, unitVisualizations);
+        else
+            unitMovementManager.SetUnits(units);
     }
 
     private void Update()
     {
         if (simulationStarted && !simulationFinished)
         {
-            unitMovementManager.MoveUnits();
-            simulationTime += Time.deltaTime;
-            OneSecondUpdate();
+            for (int i = 0; i < outerMovementCycles; i++)
+            {
+                float deltaTime = 0.02f;
+                unitMovementManager.MoveUnits(deltaTime, internalMovementCycles);
+                simulationTime += deltaTime * internalMovementCycles;
+            }
         }
+        executionComputationTime += Time.deltaTime;
     }
-
+    /*
     private void OneSecondUpdate()
     {
         secondTimer -= Time.deltaTime;
@@ -85,8 +145,9 @@ public class Simulator : MonoBehaviour
             unitMovementManager.CleanUnitList();
         }
     }
+    */
 
-    public void UnitReachedTarget()
+    public void UnitReachedTarget(Unit unit)
     {
         unitsReachedTarget++;
         if (!halfFinished && unitsReachedTarget >= numberOfUnits * 0.9) {
@@ -95,9 +156,10 @@ public class Simulator : MonoBehaviour
         }
         if (unitsReachedTarget == numberOfUnits)
         {
-            Debug.Log($"Simulation Finished: {simulationTime}s");
+            Debug.Log($"Simulation Finished: {simulationTime}s, Execution Time: {executionComputationTime}");
             simulationFinished = true;
         }
+        unitMovementManager.RemoveUnit(unit);
     }
 
     public void StartWarmUp()
@@ -114,8 +176,13 @@ public class Simulator : MonoBehaviour
     public void StartSimulation()
     {
         numberOfUnits = unitMovementManager.units.Count;
+        unitsReachedTarget = 0;
+        simulationFinished = false;
+        halfFinished = false;
         simulationStarted = true;
         simulationTime = 0;
+        executionComputationTime = 0;
+
         unitMovementManager.StartMovement(movementMode);
     }
 
@@ -130,19 +197,19 @@ public class Simulator : MonoBehaviour
                 break;
             case MovementMode.RegionalPath:
                 waterDecomposition = new WaterDecomposition();
-                decomposition = waterDecomposition.Decompose(Map.instance.tiles, -1);
+                decomposition = waterDecomposition.Decompose(Map.instance.passabilityMap, -1);
                 List<(Vector2 flowDirection, float distanceToGate)[,]> flowMaps = MapRegionPathfinding.CreateFlowMaps(decomposition);
                 Dictionary<RegionGateway, Dictionary<RegionGateway, float>> distances = MapRegionPathfinding.DistancesBetweenGates(decomposition);
                 regionalPathfinding = new RegionalPathfindingAnalysis(decomposition, flowMaps, distances);
                 break;
             case MovementMode.FlowGraph:
                 waterDecomposition = new WaterDecomposition();
-                decomposition = waterDecomposition.Decompose(Map.instance.tiles, -1);
+                decomposition = waterDecomposition.Decompose(Map.instance.passabilityMap, -1);
                 partialFlowGraph = PartialFlowGraph.PartialFlowGraphFromDecomposition(decomposition);
                 break;
             case MovementMode.RegionalFlowGraph:
                 waterDecomposition = new WaterDecomposition();
-                decomposition = waterDecomposition.Decompose(Map.instance.tiles, -1);
+                decomposition = waterDecomposition.Decompose(Map.instance.passabilityMap, -1);
                 List<(Vector2 flowDirection, float distanceToGate)[,]> flowMaps2 = MapRegionPathfinding.CreateFlowMaps(decomposition);
                 Dictionary<RegionGateway, Dictionary<RegionGateway, float>> distances2 = MapRegionPathfinding.DistancesBetweenGates(decomposition);
                 regionalPathfinding = new RegionalPathfindingAnalysis(decomposition, flowMaps2, distances2);
@@ -150,7 +217,7 @@ public class Simulator : MonoBehaviour
                 break;
             case MovementMode.RegionalFlowGraphPaths:
                 waterDecomposition = new WaterDecomposition();
-                decomposition = waterDecomposition.Decompose(Map.instance.tiles, -1);
+                decomposition = waterDecomposition.Decompose(Map.instance.passabilityMap, -1);
                 (Dictionary<RegionGateway, Dictionary<RegionGateway, float>> distances, Dictionary<RegionGateway, Dictionary<RegionGateway, List<Vector2>>> paths) pathsAndDistances;
                 pathsAndDistances = MapRegionPathfinding.DistancesAndPathsBetweenGates(decomposition);
                 regionalPathfindingPaths = new RegionalPathfindingPathsAnalysis(decomposition, pathsAndDistances.paths, pathsAndDistances.distances);
@@ -168,17 +235,11 @@ public class Simulator : MonoBehaviour
         waterDecomposition = new WaterDecomposition();
         System.Diagnostics.Stopwatch stopwatch = new System.Diagnostics.Stopwatch();
         stopwatch.Start();
-        decomposition = waterDecomposition.Decompose(Map.instance.tiles, -1);
-        //List<(Vector2 flowDirection, float distanceToGate)[,]> flowMaps = MapRegionPathfinding.CreateFlowMaps(decomposition);
-        //Dictionary<RegionGateway, Dictionary<RegionGateway, float>> distances = MapRegionPathfinding.DistancesBetweenGates(decomposition);
-        //RegionalPathfindingAnalysis regionalPathfinding = new RegionalPathfindingAnalysis(decomposition, flowMaps, distances);
+        decomposition = waterDecomposition.Decompose(Map.instance.passabilityMap, -1);
         stopwatch.Stop();
         Debug.Log($"Decomposition time: {stopwatch.Elapsed.TotalMilliseconds} ms");
         stopwatch.Reset();
-        //stopwatch.Start();
-        //RegionalPath path = new RegionalPath(regionalPathfinding, unitMovementManager.units[0].position, target.Center);
-        //stopwatch.Stop();
-        //Debug.Log($"Pathfinding time: {stopwatch.Elapsed.TotalMilliseconds} ms");
+
         List<Color> colors = new List<Color>();
         for (int i = 0; i < decomposition.numberOfClusters + 1; i++)
         {
@@ -190,23 +251,22 @@ public class Simulator : MonoBehaviour
             {
                 if (decomposition.regionMap[x, y] != -1)
                 {
-                    GameObject go = Instantiate(regionIndicator, new Vector3(x, y, 0.0f), Quaternion.identity, null);
-                    float depth = ((float)decomposition.depthMap[x, y]) / 12;
-                    //go.GetComponent<SpriteRenderer>().color = new Color(depth, depth, depth);
                     if (decomposition.IsGate(decomposition.regionMap[x, y]))
                     {
-                        go.GetComponent<SpriteRenderer>().color = colors[colors.Count - 1];
+                        Map.instance.groundTexture.SetPixel(x, y, colors[colors.Count - 1]);
                     }
                     else
                     {
-                        go.GetComponent<SpriteRenderer>().color = colors[decomposition.regionMap[x, y]];
+                        Map.instance.groundTexture.SetPixel(x, y, colors[decomposition.regionMap[x, y]]);
                     }
                 }
             }
         }
+        Map.instance.RedrawTexture();
     }
 }
 
+[System.Serializable]
 public enum MovementMode
 {
     FlowField,

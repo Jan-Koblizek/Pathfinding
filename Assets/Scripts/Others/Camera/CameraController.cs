@@ -25,10 +25,10 @@ public class CameraController : MonoBehaviour
 
     public void UpdateBounds()
     {
-        lowerXbound = cam.orthographicSize * ((float)Screen.width / Screen.height) - 0.5f;
-        higherXbound = (Map.instance.tiles.GetLength(0)) - cam.orthographicSize * ((float)Screen.width / Screen.height) - 0.5f;
-        lowerYbound = cam.orthographicSize - 0.5f;
-        higherYbound = (Map.instance.tiles.GetLength(1)) - cam.orthographicSize - 0.5f;
+        lowerXbound = cam.orthographicSize * ((float)Screen.width / Screen.height);
+        higherXbound = (Map.instance.passabilityMap.GetLength(0)) - cam.orthographicSize * ((float)Screen.width / Screen.height);
+        lowerYbound = cam.orthographicSize;
+        higherYbound = (Map.instance.passabilityMap.GetLength(1)) - cam.orthographicSize;
     }
 
 

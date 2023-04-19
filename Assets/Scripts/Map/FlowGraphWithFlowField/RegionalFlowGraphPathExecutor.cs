@@ -52,7 +52,7 @@ public class RegionalFlowGraphPathExecutor
         }
     }
 
-    public Vector2 GetSeekForce()
+    public Vector2 GetSeekForce(float deltaTime)
     {
         int currentRegion = decomposition.regionMap[unit.currentCoord.X, unit.currentCoord.Y];
         if (!reachedFinalRegion &&
@@ -117,7 +117,7 @@ public class RegionalFlowGraphPathExecutor
         else if (reachedFinalRegion || currentRegion == goalRegion)
         {
             reachedFinalRegion = true;
-            return followFinalPath();
+            return followFinalPath(deltaTime);
         }
         else
         {
@@ -134,11 +134,11 @@ public class RegionalFlowGraphPathExecutor
         }
     }
 
-    private Vector2 followFinalPath()
+    private Vector2 followFinalPath(float deltaTime)
     {
         if (finalPathExecutor == null)
-            finalPathExecutor = new PathExecutor(unit, regionalPath.regionalPaths[pathIndex].finalPath);
+            finalPathExecutor = new PathExecutor(unit, ref regionalPath.regionalPaths[pathIndex].finalPath);
         
-        return finalPathExecutor.GetPathFollowingForce();
+        return finalPathExecutor.GetPathFollowingForce(deltaTime);
     }
 }

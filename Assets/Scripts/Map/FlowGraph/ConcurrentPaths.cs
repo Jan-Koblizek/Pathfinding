@@ -690,13 +690,12 @@ internal class ConcurrentPaths
 
         private float TransitOfPath(float step)
         {
-            var finishedSteps = step - Cost;
-            if (finishedSteps <= 0)
+            var finishedTime = step - Cost;
+            if (finishedTime <= 0)
             {
                 return 0;
             }
-            float unitSize = (2 * SimulationSettings.UnitRadius + 0.8f); // Unit size + some space around it
-            var result = finishedSteps * Flow * SimulationSettings.instance.UnitSpeed / unitSize;
+            var result = finishedTime * Flow;
             return result;
         }
 
@@ -706,7 +705,7 @@ internal class ConcurrentPaths
         /// </summary>
         /// <param name="flowVolume">number of units to send</param>
         /// <returns>Total number of steps to transport all units</returns>
-        internal float StepsToTransport(float flowVolume)
+        internal float TimeToTransport(float flowVolume)
         {
             if (flowVolume < InitialArrivals)
             {
@@ -714,8 +713,7 @@ internal class ConcurrentPaths
             }
 
             var remainingVolume = flowVolume - InitialArrivals;
-            float unitSize = (2 * SimulationSettings.UnitRadius + 0.8f); // Unit size + some space around it
-            var result = (unitSize * remainingVolume) / (Flow * SimulationSettings.instance.UnitSpeed) + Cost;
+            var result = remainingVolume / Flow + Cost;
 
             return result;
         }
@@ -734,7 +732,7 @@ internal class ConcurrentPaths
         for (int i = 1; i < _atOnce.Count; i++)
         {
             var nextPath = new VirtualPath(_atOnce[i], virtualPath);
-            if (nextPath.Cost > virtualPath.StepsToTransport(numberOfUnits))
+            if (nextPath.Cost > virtualPath.TimeToTransport(numberOfUnits))
             {
                 //done
                 break;
@@ -745,7 +743,7 @@ internal class ConcurrentPaths
             }
         }
 
-        var totalSteps = virtualPath.StepsToTransport(numberOfUnits);
+        var totalSteps = virtualPath.TimeToTransport(numberOfUnits);
         return totalSteps;
     }
 
@@ -756,14 +754,13 @@ internal class ConcurrentPaths
         var path = PlannerPath.GetPathById(pathID);
 
         var finished = time - path.Cost;
-        var finishedSteps = (int)Math.Floor(finished);
-        if (finishedSteps <= 0)
+        var timeFinished = finished;
+        if (timeFinished <= 0)
         {
             return 0;
         }
 
-        float unitSize = (2 * SimulationSettings.UnitRadius + 0.8f); // Unit size + some space around it
-        var result = finishedSteps * path.Flow * SimulationSettings.instance.UnitSpeed / unitSize;
+        var result = timeFinished * path.Flow;
         return (int)Math.Floor(result);
     }
 

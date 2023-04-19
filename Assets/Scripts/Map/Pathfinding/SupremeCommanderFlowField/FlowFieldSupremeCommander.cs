@@ -10,7 +10,7 @@ public class FlowFieldSupremeCommander
     public Vector2 goalPosition;
     public GateSupremeCommander[,] gateTargetsForRegions;
 
-    public Vector2 GetFlowFieldDirection(Vector2 pos)
+    public Vector2 GetFlowFieldDirection(Vector2 pos, float deltaTime)
     {
         Coord ff = new Coord(Mathf.FloorToInt(pos.x), Mathf.FloorToInt(pos.y));
         Coord fc = new Coord(Mathf.FloorToInt(pos.x), Mathf.CeilToInt(pos.y));

@@ -8,11 +8,11 @@ using utils;
 
 public class Walls
 {
-    private Tile[,] map;
+    private bool[,] map;
     public bool IsInWallsPoint(Vector2 position)
     {
         Coord coord = Coord.CoordFromPosition(position);
-        if (map[coord.X, coord.Y].obstructed) return true;
+        if (!map[coord.X, coord.Y]) return true;
         else return false;
     }
 
@@ -27,24 +27,24 @@ public class Walls
         int width = map.GetLength(0);
         int height = map.GetLength(1);
 
-        bool upperLeftObstructed = coord.X - 1 < 0 || coord.Y + 1 >= height || map[coord.X - 1, coord.Y + 1].obstructed;
-        bool upperObstructed = coord.Y + 1 >= height || map[coord.X, coord.Y + 1].obstructed;
-        bool upperRightObstructed = coord.X + 1 >= width || coord.Y + 1 >= height || map[coord.X + 1, coord.Y + 1].obstructed;
-        bool leftObstructed = coord.X - 1 < 0 || map[coord.X - 1, coord.Y].obstructed;
-        bool centerObstructed = map[coord.X, coord.Y].obstructed;
-        bool rightObstructed = coord.X + 1 >= width || map[coord.X + 1, coord.Y].obstructed;
-        bool bottomLeftObstructed = coord.X - 1 < 0 || coord.Y - 1 < 0 || map[coord.X - 1, coord.Y - 1].obstructed;
-        bool bottomObstructed = coord.Y - 1 < 0 || map[coord.X, coord.Y - 1].obstructed;
-        bool bottomRightObstructed = coord.X + 1 >= width || coord.Y - 1 < 0 || map[coord.X + 1, coord.Y - 1].obstructed;
+        bool upperLeftObstructed = coord.X - 1 < 0 || coord.Y + 1 >= height || !map[coord.X - 1, coord.Y + 1];
+        bool upperObstructed = coord.Y + 1 >= height || !map[coord.X, coord.Y + 1];
+        bool upperRightObstructed = coord.X + 1 >= width || coord.Y + 1 >= height || !map[coord.X + 1, coord.Y + 1];
+        bool leftObstructed = coord.X - 1 < 0 || !map[coord.X - 1, coord.Y];
+        bool centerObstructed = !map[coord.X, coord.Y];
+        bool rightObstructed = coord.X + 1 >= width || !map[coord.X + 1, coord.Y];
+        bool bottomLeftObstructed = coord.X - 1 < 0 || coord.Y - 1 < 0 || !map[coord.X - 1, coord.Y - 1];
+        bool bottomObstructed = coord.Y - 1 < 0 || !map[coord.X, coord.Y - 1];
+        bool bottomRightObstructed = coord.X + 1 >= width || coord.Y - 1 < 0 || !map[coord.X + 1, coord.Y - 1];
 
-        bool inWallUpperLeft = upperLeftObstructed && Vector2.Distance(frac, new Vector2(-0.5f, 0.5f)) <= radius;
-        bool inWallUpper = upperObstructed && 0.5f - fracY <= radius;
-        bool inWallUpperRigth = upperRightObstructed && Vector2.Distance(frac, new Vector2(0.5f, 0.5f)) <= radius;
-        bool inWallLeft = leftObstructed && fracX + 0.5f <= radius;
-        bool inWallRight = rightObstructed && 0.5f - fracX <= radius;
-        bool inWallBottomLeft = bottomLeftObstructed && Vector2.Distance(frac, new Vector2(-0.5f, -0.5f)) <= radius;
-        bool inWallBottom = bottomObstructed && fracY + 0.5f <= radius;
-        bool inWallBottomRight = bottomRightObstructed && Vector2.Distance(frac, new Vector2(0.5f, -0.5f)) <= radius;
+        bool inWallUpperLeft = upperLeftObstructed && Vector2.Distance(frac, new Vector2(0.0f, 1.0f)) <= radius;
+        bool inWallUpper = upperObstructed && 1.0f - fracY <= radius;
+        bool inWallUpperRigth = upperRightObstructed && Vector2.Distance(frac, new Vector2(1.0f, 1.0f)) <= radius;
+        bool inWallLeft = leftObstructed && fracX <= radius;
+        bool inWallRight = rightObstructed && 1.0f - fracX <= radius;
+        bool inWallBottomLeft = bottomLeftObstructed && Vector2.Distance(frac, new Vector2(0.0f, 0.0f)) <= radius;
+        bool inWallBottom = bottomObstructed && fracY <= radius;
+        bool inWallBottomRight = bottomRightObstructed && Vector2.Distance(frac, new Vector2(1.0f, 0.0f)) <= radius;
 
         return (inWallUpperLeft || inWallUpperRigth || inWallBottomLeft || inWallBottomRight || inWallUpper || inWallBottom || inWallLeft || inWallRight || centerObstructed);
     }
@@ -131,7 +131,7 @@ public class Walls
             distance += distanceChange;
             if (distance <= length)
             {
-                if (!newCoord.WithinBounds() || map[newCoord.X, newCoord.Y].obstructed)
+                if (!newCoord.WithinBounds() || !map[newCoord.X, newCoord.Y])
                 {
                     distanceToHit = distance;
                     hitPoint = newPosition;
@@ -162,14 +162,14 @@ public class Walls
         {
             if (direction.x > 0)
             {
-                float xPos = coord.X + 0.5f;
+                float xPos = coord.X + 1.0f;
                 xShift = xPos - position.x;
                 xDistance = (xShift / direction.x) + 0.001f;
                 xPosition = position + xDistance * direction;
                 xCoord = Coord.CoordFromPosition(xPosition);
             }
             else {
-                float xPos = coord.X - 0.5f;
+                float xPos = coord.X;
                 xShift = xPos - position.x;
                 xDistance = (xShift / direction.x) + 0.001f;
                 xPosition = position + xDistance * direction;
@@ -181,7 +181,7 @@ public class Walls
         {
             if (direction.y > 0)
             {
-                float yPos = coord.Y + 0.5f;
+                float yPos = coord.Y + 1.0f;
                 yShift = yPos - position.y;
                 yDistance = (yShift / direction.y) + 0.001f;
                 yPosition = position + yDistance * direction;
@@ -189,7 +189,7 @@ public class Walls
             }
             else
             {
-                float yPos = coord.Y - 0.5f;
+                float yPos = coord.Y;
                 yShift = yPos - position.y;
                 yDistance = (yShift / direction.y) + 0.001f;
                 yPosition = position + yDistance * direction;
@@ -236,7 +236,7 @@ public class Walls
 
     public void Initialize(Map map)
     {
-        this.map = map.tiles;
+        this.map = map.passabilityMap;
         InitializeObstacleTurningRays();
         InitializeObstacleRepulsionRays();
     }

@@ -18,6 +18,15 @@ public class PathExecutor
     private int targetLastSeenCounter = 0;
     private const int recalculatePathThreshold = 5;
 
+    public PathExecutor(Unit unit, ref List<Vector2> path)
+    {
+        this.unit = unit;
+        this.path = path;
+        targetUpdateTime = targetUpdatePeriod * 2;
+        previousSteeringTarget = unit.position;
+        steeringTarget = unit.position;
+    }
+
     public PathExecutor(Unit unit, List<Vector2> path)
     {
         this.unit = unit;
@@ -27,7 +36,7 @@ public class PathExecutor
         steeringTarget = unit.position;
     }
 
-    public PathExecutor(Unit unit, Stack<Vector2> path)
+    public PathExecutor(Unit unit, ref Stack<Vector2> path)
     {
         this.unit = unit;
         this.path = path.ToList();
@@ -36,9 +45,9 @@ public class PathExecutor
         steeringTarget = unit.position;
     }
 
-    public Vector2 GetPathFollowingForce()
+    public Vector2 GetPathFollowingForce(float deltaTime)
     {
-        int furthestVisiblePathIndex = getFurthestVisiblePathIndex();
+        int furthestVisiblePathIndex = getFurthestVisiblePathIndex(deltaTime);
         steeringTargetIndex = furthestVisiblePathIndex;
         steeringTarget = path[steeringTargetIndex];
         float factor = Mathf.Clamp01(targetUpdateTime * 2);
@@ -46,10 +55,10 @@ public class PathExecutor
         return result.normalized;
     }
 
-    public int getFurthestVisiblePathIndex()
+    public int getFurthestVisiblePathIndex(float deltaTime)
     {
         //Don't check too often to save CPU power
-        if (SkipTargetIndexChecking())
+        if (SkipTargetIndexChecking(deltaTime))
         {
             return steeringTargetIndex;
         }
@@ -94,9 +103,9 @@ public class PathExecutor
         return pathIndex;
     }
 
-    private bool SkipTargetIndexChecking()
+    private bool SkipTargetIndexChecking(float deltaTime)
     {
-        targetUpdateTime += Time.deltaTime;
+        targetUpdateTime += deltaTime;
         if (Vector2.Distance(unit.position, steeringTarget) > 2 &&
             targetUpdateTime < targetUpdatePeriod)
             return true;
@@ -128,7 +137,6 @@ public class PathExecutor
     {
         targetLastSeenCounter++;
         if (targetLastSeenCounter <= recalculatePathThreshold) return;
-        Debug.Log("Recalculate");
         path = Pathfinding.ConstructPathAStar(unit.position, path[path.Count - 1], Pathfinding.StepDistance, 0.2f).ToList();
     }
 }

@@ -100,11 +100,11 @@ public class FlowGraph
             //select good end of the edge
             if (edge.Start.Id == t)
             {
-                if (Mathf.Abs(edge.Flow - edge.Capacity) > 0.01f) yield return edge.End.Id;
+                if (Mathf.Abs(edge.Flow - edge.MaxFlow) > 0.01f) yield return edge.End.Id;
             }
             else
             {
-                if (Mathf.Abs(edge.Flow + edge.Capacity) > 0.01f) yield return edge.Start.Id;
+                if (Mathf.Abs(edge.Flow + edge.MaxFlow) > 0.01f) yield return edge.Start.Id;
             }
         }
     }
@@ -142,7 +142,7 @@ public class FlowGraph
         foreach (FlowNode node in TerminalZoneNodes)
         {
             //Specify length to speed up initialization
-            FlowEdge edge = new FlowEdge(Terminal, node, Vector2.Distance(source, node.Center.GetWorldPosition()), float.MaxValue);
+            FlowEdge edge = new FlowEdge(Terminal, node, float.MaxValue);
             Edges.Add(edge);
             _idToEdges.Add(edge.Id, edge);
             (int, int) key = (Terminal.Id, node.Id);
@@ -157,7 +157,7 @@ public class FlowGraph
         foreach (FlowNode node in SourceZoneNodes)
         {
             //Specify length to speed up initialization
-            FlowEdge edge = new FlowEdge(Source, node, Vector2.Distance(source, node.Center.GetWorldPosition()), float.MaxValue);
+            FlowEdge edge = new FlowEdge(Source, node, float.MaxValue);
             Edges.Add(edge);
             _idToEdges.Add(edge.Id, edge);
             (int, int) key = (Source.Id, node.Id);

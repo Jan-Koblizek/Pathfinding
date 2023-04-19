@@ -1,19 +1,21 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.ComponentModel;
 using UnityEngine;
 using UnityEngine.Diagnostics;
 
 public class Map : MonoBehaviour
 {
-    public GameObject tilesParent;
-    private Texture2D groundMap;
-
-    public GameObject obstructedTilePrefab;
-    public GameObject freeTilePrefab;
+    public SpriteRenderer mapPlane;
+    private Texture2D obstructionMap;
+    [HideInInspector]
+    public Texture2D groundTexture;
 
     [HideInInspector]
-    public Tile[,] tiles;
+    public bool[,] passabilityMap;
+    [HideInInspector]
+    public List<Unit>[,] unitsMap;
     //public MapSmallChunk[,] smallChunks;
     //public MapLargeChunk[,] largeChunks;
 
@@ -27,22 +29,16 @@ public class Map : MonoBehaviour
     }
     public void Initialize(Texture2D map)
     {
-        groundMap = map;
-        int width = (groundMap.width / 16) * 16;
-        int height = (groundMap.height / 16) * 16;
+        obstructionMap = map;
+        int width = (obstructionMap.width / 16) * 16;
+        int height = (obstructionMap.height / 16) * 16;
 
-        if (tiles != null)
-        {
-            for (int i = 0; i < tiles.GetLength(0); i++)
-            {
-                for (int j = 0; j < tiles.GetLength(1); j++)
-                {
-                    Destroy(tiles[i, j].gameObject);
-                }
-            }
-        }
-
-        tiles = new Tile[width, height];
+        passabilityMap = new bool[width, height];
+        groundTexture = new Texture2D(width, height, TextureFormat.ARGB32, false);
+        groundTexture.filterMode = FilterMode.Point;
+        mapPlane.gameObject.transform.localScale = new Vector3(1, 1, 1);
+        mapPlane.gameObject.transform.position = new Vector3(0, 0, 0);
+        unitsMap = new List<Unit>[width, height];
         //smallChunks = new MapSmallChunk[width / 4, height / 4];
         //largeChunks = new MapLargeChunk[width / 16, height / 16];
 
@@ -50,44 +46,51 @@ public class Map : MonoBehaviour
         {
             for (int j = 0; j < width; j += 1)
             {
-                Color pixel1 = groundMap.GetPixel(j, i);
+                Color pixel1 = obstructionMap.GetPixel(j, i);
                 if (pixel1.r > 0.5)
                 {
-                    GameObject go = Instantiate(freeTilePrefab, new Vector3(j, i, 0.0f), Quaternion.identity, tilesParent.transform);
-                    Tile tile = go.GetComponent<Tile>();
-                    tiles[j, i] = tile;
-                    tile.coord = new Coord(j, i);
+                    passabilityMap[j, i] = true;
+                    groundTexture.SetPixel(j, i, Color.white);
+
                 }
                 else
                 {
-                    GameObject go = Instantiate(obstructedTilePrefab, new Vector3(j, i, 0.0f), Quaternion.identity, tilesParent.transform);
-                    Tile tile = go.GetComponent<Tile>();
-                    tiles[j, i] = tile;
-                    tile.coord = new Coord(j, i);
+                    passabilityMap[j, i] = false;
+                    groundTexture.SetPixel(j,i, Color.black);
                 }
+                unitsMap[j, i] = new List<Unit>();
             }
         }
+
         walls = new Walls();
         walls.Initialize(this);
         Camera.main.GetComponent<CameraController>().UpdateBounds();
+        RedrawTexture();
     }
 
-    public Tile GetTile(Coord coord)
+    public void RedrawTexture()
     {
-        if (coord.X < tiles.GetLength(0) && coord.X >= 0 && coord.Y < tiles.GetLength(1) && coord.Y >= 0)
-        {
-            return tiles[coord.X, coord.Y];
-        }
-        return null;
+        groundTexture.Apply();
+        Sprite groundSprite = Sprite.Create(groundTexture, new Rect(0, 0, groundTexture.width, groundTexture.height), new Vector2(0, 0), 1);
+        mapPlane.sprite = groundSprite;
     }
 
-    public Tile GetTile(int x, int y)
+    public bool GetTilePassable(Coord coord)
     {
-        if (x < tiles.GetLength(0) && x >= 0 && y < tiles.GetLength(1) && y >= 0)
+        if (coord.X < passabilityMap.GetLength(0) && coord.X >= 0 && coord.Y < passabilityMap.GetLength(1) && coord.Y >= 0)
         {
-            return tiles[x, y];
+            return passabilityMap[coord.X, coord.Y];
         }
-        return null;
+        return false;
+    }
+
+    public bool GetTilePassable(int x, int y)
+    {
+        if (x < passabilityMap.GetLength(0) && x >= 0 && y < passabilityMap.GetLength(1) && y >= 0)
+        {
+            return passabilityMap[x, y];
+        }
+        return false;
     }
 }
 [Serializable]
@@ -109,17 +112,17 @@ public class Coord : IEquatable<Coord>
 
     public static Coord CoordFromPosition(Vector3 position)
     {
-        return new Coord(Mathf.RoundToInt(position.x), Mathf.RoundToInt(position.y));
+        return new Coord(Mathf.RoundToInt(position.x - 0.5f), Mathf.RoundToInt(position.y - 0.5f));
     }
 
     public Vector2 GetWorldPosition()
     {
-        return new Vector2(X, Y);
+        return new Vector2(X + 0.5f, Y + 0.5f);
     }
 
     public bool WithinBounds()
     {
-        return X >= 0 && X < Map.instance.tiles.GetLength(0) && Y >= 0 && Y < Map.instance.tiles.GetLength(1);
+        return X >= 0 && X < Map.instance.passabilityMap.GetLength(0) && Y >= 0 && Y < Map.instance.passabilityMap.GetLength(1);
     }
 
     public bool Equals(Coord b)
@@ -168,9 +171,14 @@ public class Coord : IEquatable<Coord>
         return true;
     }
 
-    public Tile GetTile()
+    public bool Passable()
     {
-        return Map.instance.tiles[X, Y];
+        return Map.instance.passabilityMap[X, Y];
+    }
+
+    public List<Unit> UnitsAtTile()
+    {
+        return Map.instance.unitsMap[X, Y];
     }
 
     public override string ToString()

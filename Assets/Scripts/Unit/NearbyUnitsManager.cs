@@ -15,9 +15,9 @@ public class NearbyUnitsManager
         this.nearbyUnits = new List<Unit>();
     }
 
-    public void GetNearbyUnitsForces(out Vector2 separationForce, out Vector2 alignmentForce, out Vector2 unitAvoidanceForce)
+    public void GetNearbyUnitsForces(float deltaTime, out Vector2 separationForce, out Vector2 alignmentForce, out Vector2 unitAvoidanceForce)
     {
-        refreshNearbyUnits();
+        refreshNearbyUnits(deltaTime);
         separationForce = getSeparationForce();
         alignmentForce = getAlignmentForce();
         unitAvoidanceForce = getUnitAvoidanceForce();
@@ -54,7 +54,7 @@ public class NearbyUnitsManager
     {
         var collidingRadius = 2 * SimulationSettings.UnitRadius;
         collidingRadius *= 1;
-        var relativePosition = this.unit.position - otherUnit.position;
+        var relativePosition = (this.unit.position) - (otherUnit.position);
         var relativeVelocity = this.unit.desiredVelocity - otherUnit.desiredVelocity;
 
         var possibleCollisionAtStep = relativePosition.magnitude / relativeVelocity.magnitude;
@@ -124,7 +124,7 @@ public class NearbyUnitsManager
         float timeToCollision = (relativePosition.magnitude - 2*SimulationSettings.UnitRadius) / relativeVelocity.magnitude;
         //Debug.Log($"angle1 {Vector2.SignedAngle(relativePosition, relativeVelocity)}, angle2 {Vector2.SignedAngle(relativePosition, relativeVelocity)}");
 
-        if (Geometry.CircleIntersectsRay(relativePosition, relativePosition + 2 * relativeVelocity, 2*SimulationSettings.UnitRadius))
+        if (Geometry.CircleIntersectsRay(relativePosition, relativePosition + relativeVelocity, 2*SimulationSettings.UnitRadius))
         {
             relativePosition.Normalize();
             relativeVelocity.Normalize();
@@ -176,7 +176,7 @@ public class NearbyUnitsManager
     private float SeparationForceCalculator(float boundsDistance)
     {
         float factor = Mathf.Clamp01(1.0f - boundsDistance);
-        return factor * factor * factor;
+        return factor * factor * factor * factor * factor * factor;
     }
 
     private Vector2 getAlignmentForce()
@@ -188,9 +188,9 @@ public class NearbyUnitsManager
         return (desiredVelocity - unit.velocity).LimitMagnitude(SimulationSettings.instance.MaxForce);
     }
 
-    private void refreshNearbyUnits()
+    private void refreshNearbyUnits(float deltaTime)
     {
-        nearbyUnitsUpdateTime += Time.deltaTime;
+        nearbyUnitsUpdateTime += deltaTime;
         if (nearbyUnitsUpdateTime >= 0.0f)
         {
             nearbyUnitsUpdateTime = -nearbyUnitsRefreshPeriod;
@@ -202,11 +202,11 @@ public class NearbyUnitsManager
     {
         Coord currentCoord = unit.currentCoord;
         nearbyUnits = new List<Unit>();
-        for (int i = Mathf.Max(currentCoord.X - 2, 0); i < Mathf.Min(currentCoord.X + 3, Map.instance.tiles.GetLength(0)); i++)
+        for (int i = Mathf.Max(currentCoord.X - 2, 0); i < Mathf.Min(currentCoord.X + 3, Map.instance.passabilityMap.GetLength(0)); i++)
         {
-            for (int j = Mathf.Max(currentCoord.Y - 2, 0); j < Mathf.Min(currentCoord.Y + 3, Map.instance.tiles.GetLength(1)); j++)
+            for (int j = Mathf.Max(currentCoord.Y - 2, 0); j < Mathf.Min(currentCoord.Y + 3, Map.instance.passabilityMap.GetLength(1)); j++)
             {
-                nearbyUnits.AddRange(Map.instance.tiles[i, j].units);
+                nearbyUnits.AddRange(Map.instance.unitsMap[i, j]);
             }
         }
         nearbyUnits.Remove(unit);

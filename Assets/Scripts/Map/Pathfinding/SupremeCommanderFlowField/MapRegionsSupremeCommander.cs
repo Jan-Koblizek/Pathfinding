@@ -20,7 +20,7 @@ public class MapRegionsSupremeCommander
 
     private MapRegionsSupremeCommander()
     {
-        regions = new MapRegionSupremeCommander[Map.instance.tiles.GetLength(0) / 8, Map.instance.tiles.GetLength(1) / 8];
+        regions = new MapRegionSupremeCommander[Map.instance.passabilityMap.GetLength(0) / 8, Map.instance.passabilityMap.GetLength(1) / 8];
     }
 
     private void initialize()

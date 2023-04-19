@@ -1,35 +1,21 @@
-using System.Collections;
 using System.Collections.Generic;
-using System.IO;
-using Unity.VisualScripting;
-using UnityEditor;
 using UnityEngine;
-using UnityEngine.Diagnostics;
-using UnityEngine.UI;
-using UnityEngine.UIElements;
 using utils;
-using static UnityEditor.PlayerSettings;
 
-public class Unit : MonoBehaviour
+public class Unit
 {
-    private bool finishedMoving;
-
     private Target target;
     float checkIfReachedTargetInterval = 0;
 
     public Vector2 position;
+    private Vector2 position2;
     public Vector2 velocity;
     public Vector2 desiredVelocity;
-    protected float time = 0;
-    [HideInInspector]
-    public Vector2 moveDirection;
 
-    public float speed;
+    private float maxSpeed;
     [HideInInspector]
     public Coord currentCoord;
     private FlowField flowField;
-    [HideInInspector]
-    public float deltaTime;
     private PathExecutor pathExecutor;
     private RegionalPathExecutor regionalPathExecutor;
     private RegionalFlowGraphPathExecutor regionalFlowGraphPathExecutor;
@@ -39,21 +25,22 @@ public class Unit : MonoBehaviour
 
     public MovementMode movementMode;
 
-    private void Start()
+    public void Initialize(Vector2 pos)
     {
-        position = new Vector2(this.transform.position.x, this.transform.position.y);
-        currentCoord = Coord.CoordFromPosition(this.transform.position);
-        ChangeCoord(currentCoord);
+        position = pos;
+        currentCoord = Coord.CoordFromPosition(pos);
+        ChangeCoord(position);
         nearbyUnitsManager = new NearbyUnitsManager(this);
+        maxSpeed = SimulationSettings.instance.UnitSpeed;
     }
 
-    private void ApplyForce(Vector2 force)
+    private void ApplyForce(Vector2 force, float deltaTime)
     {
         force = force.LimitMagnitude(SimulationSettings.instance.MaxForce);
-        float factor = Mathf.Clamp01(1.0f - 50 * Time.deltaTime);
-        Vector2 desiredVelocity = factor * velocity + (1.0f - factor) * force;
-        //velocity = limitRotation(desiredVelocity);
-        velocity = desiredVelocity.LimitMagnitude(SimulationSettings.instance.UnitSpeed);
+        float speed = velocity.magnitude;
+        float factor = Mathf.Clamp01(1.0f - (20 - 15 * (speed / maxSpeed)) * deltaTime);
+        Vector2 goalVelocity = factor * velocity + (1.0f - factor) * force;
+        velocity = goalVelocity.LimitMagnitude(maxSpeed);
     }
 
     /*
@@ -80,14 +67,8 @@ public class Unit : MonoBehaviour
     }
     */
 
-    private Vector2 ComputeForces()
+    public Vector2 GetSeekForce(float deltaTime)
     {
-        Vector2 separationForce, alignmentForce, unitTurningForce;
-        nearbyUnitsManager.GetNearbyUnitsForces(out separationForce, out alignmentForce, out unitTurningForce);
-        Vector2 wallRepulsionForce = Map.instance.walls.GetWallRepulsionForce(this);
-        Vector2 wallTurningForce = Map.instance.walls.GetWallTurningForce(this);
-        Vector2 separation = separationForce;
-        Vector2 alignment = alignmentForce;
         Vector2 seek;
 
         switch (movementMode)
@@ -96,47 +77,59 @@ public class Unit : MonoBehaviour
                 seek = flowField.getMovementDirection(position);
                 break;
             case MovementMode.PathFollowing:
-                if (pathExecutor != null) seek = pathExecutor.GetPathFollowingForce();
+                if (pathExecutor != null) seek = pathExecutor.GetPathFollowingForce(deltaTime);
                 else seek = Vector2.zero;
                 break;
             case MovementMode.PathFollowingLowerNumberOfPaths:
-                if (pathExecutor != null) seek = pathExecutor.GetPathFollowingForce();
+                if (pathExecutor != null) seek = pathExecutor.GetPathFollowingForce(deltaTime);
                 else seek = Vector2.zero;
                 break;
             case MovementMode.SupremeCommanderFlowField:
-                seek = flowFieldSupremeCommander.GetFlowFieldDirection(position);
+                seek = flowFieldSupremeCommander.GetFlowFieldDirection(position, deltaTime);
                 break;
             case MovementMode.RegionalPath:
-                seek = regionalPathExecutor.GetSeekForce();
+                seek = regionalPathExecutor.GetSeekForce(deltaTime);
                 break;
             case MovementMode.RegionalFlowGraph:
-                seek = regionalFlowGraphPathExecutor.GetSeekForce();
+                seek = regionalFlowGraphPathExecutor.GetSeekForce(deltaTime);
                 break;
             case MovementMode.RegionalFlowGraphPaths:
-                seek = regionalFlowGraphPathUsingSubPathsExecutor.GetSeekForce();
+                seek = regionalFlowGraphPathUsingSubPathsExecutor.GetSeekForce(deltaTime);
                 break;
             default:
                 seek = Vector2.zero;
                 break;
         }
-        desiredVelocity = 5.0f * seek;
 
-        var combination =
-            5.0f * seek +
-            30.0f * separation +
+        return seek;
+    }
+
+    public Vector2 ComputeForces(float deltaTime)
+    {
+        Vector2 seek = GetSeekForce(deltaTime);
+        desiredVelocity = SimulationSettings.instance.UnitSpeed * seek;
+
+        Vector2 separationForce, alignmentForce, unitTurningForce;
+        nearbyUnitsManager.GetNearbyUnitsForces(deltaTime, out separationForce, out alignmentForce, out unitTurningForce);
+ 
+        Vector2 wallRepulsionForce = Map.instance.walls.GetWallRepulsionForce(this);
+        Vector2 wallTurningForce = Map.instance.walls.GetWallTurningForce(this);
+
+        Vector2 combination =
+            10.0f * seek +
+            100.0f * separationForce +
             50.0f * wallRepulsionForce +
             10.0f * wallTurningForce +
-            2.0f * unitTurningForce +
-            0.5f * alignment;
+            5.0f * unitTurningForce +
+            0.5f * alignmentForce;
 
         return combination.LimitMagnitude(SimulationSettings.instance.MaxForce);
     }
 
-    public void Move()
+    public void CalculateNewPosition(float deltaTime, Vector2 force)
     {
-        Vector2 force = ComputeForces();
-        ApplyForce(force);
-        Vector2 movement = velocity * Time.deltaTime;
+        ApplyForce(force, deltaTime);
+        Vector2 movement = velocity * deltaTime;
         Vector2 newPosition = new Vector2(position.x + movement.x, position.y + movement.y);
         Vector2 newPositionX = new Vector2(position.x + movement.x, position.y);
         Vector2 newPositionY = new Vector2(position.x, position.y + movement.y);
@@ -154,50 +147,36 @@ public class Unit : MonoBehaviour
         }
 
         if (!Map.instance.walls.IsInWallsUnit(newPosition) && !nearbyUnitsManager.NearbyPositionOccupied(newPosition)) {
-            position = newPosition;
-            transform.position = position;
-
-            Coord newCoord = Coord.CoordFromPosition(position);
-            if (currentCoord != newCoord)
-            {
-                ChangeCoord(newCoord);
-            }
-            bool reachedTarget = CheckIfReachedTarget();
-            if (reachedTarget)
-            {
-                Simulator.Instance.UnitReachedTarget();
-                currentCoord.GetTile().units.Remove(this);
-                Destroy(gameObject);
-            }
+            position2 = newPosition;
+            ChangeCoord(position2);
+            TargetReachedTestAndResponse(deltaTime);
         }
     }
 
-    /*
-    private void Update()
+    public void TargetReachedTestAndResponse(float deltaTime)
     {
-        deltaTime = Time.deltaTime;
-        if (!finishedMoving)
+        bool reachedTarget = CheckIfReachedTarget(deltaTime);
+        if (reachedTarget)
         {
-            finishedMoving = !pathExecutor.ExecutePath(ref path, deltaTime);
-
-            if (!finishedMoving && moveDirection.magnitude > 0)
-            {
-                pathExecutor.Move(deltaTime);
-                Coord newCoord = Coord.CoordFromPosition(position);
-                if (currentCoord != newCoord)
-                {
-                    ChangeCoord(newCoord);
-                }
-            }
+            Simulator.Instance.UnitReachedTarget(this);
+            currentCoord.UnitsAtTile().Remove(this);
         }
     }
-    */
 
-    private void ChangeCoord(Coord newCoord)
+    public void UpdatePositionAndVelocity()
     {
-        currentCoord.GetTile().units.Remove(this);
-        newCoord.GetTile().units.Add(this);
-        currentCoord = newCoord;
+        position = position2;
+    }
+
+    public void ChangeCoord(Vector2 position)
+    {
+        Coord newCoord = Coord.CoordFromPosition(position);
+        if (currentCoord != newCoord)
+        {
+            currentCoord.UnitsAtTile().Remove(this);
+            newCoord.UnitsAtTile().Add(this);
+            currentCoord = newCoord;
+        }
     }
 
     public bool MoveTo(Vector2 target)
@@ -205,8 +184,7 @@ public class Unit : MonoBehaviour
         Stack<Vector2> path = Pathfinding.ConstructPathAStar(position, target, Pathfinding.StepDistance, 0.2f);
         if (path != null && path.Count > 0)
         {
-            finishedMoving = false;
-            pathExecutor = new PathExecutor(this, path);
+            pathExecutor = new PathExecutor(this, ref path);
             return true;
         }
         return false;
@@ -214,14 +192,12 @@ public class Unit : MonoBehaviour
 
     public void MoveAlongThePath(Stack<Vector2> path)
     {
-        finishedMoving = false;
-        pathExecutor = new PathExecutor(this, path);
+        pathExecutor = new PathExecutor(this, ref path);
     }
 
     public void MoveAlongThePath(List<Vector2> path)
     {
-        finishedMoving = false;
-        pathExecutor = new PathExecutor(this, path);
+        pathExecutor = new PathExecutor(this, ref path);
     }
 
     public void UseFlowField(FlowField flowField)
@@ -254,11 +230,11 @@ public class Unit : MonoBehaviour
         this.target = target;
     }
 
-    private bool CheckIfReachedTarget()
+    private bool CheckIfReachedTarget(float deltaTime)
     {
         bool result = false;
         float distanceToBounds;
-        checkIfReachedTargetInterval -= Time.deltaTime;
+        checkIfReachedTargetInterval -= deltaTime;
         if (checkIfReachedTargetInterval <= 0)
         {
             result = target.UnitReachedTarget(this, out distanceToBounds);

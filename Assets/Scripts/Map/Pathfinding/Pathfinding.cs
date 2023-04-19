@@ -11,8 +11,8 @@ public static class Pathfinding
     private static List<NeighborWithDistance> GetNeighborsAStarNoBlocking(Coord coord)
     {
         bool up, down, left, right, upLeft, upRight, downLeft, downRight;
-        int width = Map.instance.tiles.GetLength(0);
-        int height = Map.instance.tiles.GetLength(1);
+        int width = Map.instance.passabilityMap.GetLength(0);
+        int height = Map.instance.passabilityMap.GetLength(1);
         up = coord.Y + 1 < height;
         down = coord.Y - 1 >= 0;
         left = coord.X - 1 >= 0;
@@ -73,16 +73,16 @@ public static class Pathfinding
     private static List<NeighborWithDistance> GetNeighborsAStar(Coord coord, out bool someNeighborObstructed)
     {
         bool up, down, left, right, upLeft, upRight, downLeft, downRight;
-        int width = Map.instance.tiles.GetLength(0);
-        int height = Map.instance.tiles.GetLength(1);
-        up = coord.Y + 1 < height && !Map.instance.tiles[coord.X, coord.Y + 1].obstructed;
-        down = coord.Y - 1 >= 0 && !Map.instance.tiles[coord.X, coord.Y - 1].obstructed;
-        left = coord.X - 1 >= 0 && !Map.instance.tiles[coord.X - 1, coord.Y].obstructed;
-        right = coord.X + 1 < width && !Map.instance.tiles[coord.X + 1, coord.Y].obstructed;
-        upLeft = coord.Y + 1 < height && coord.X - 1 >= 0 && !Map.instance.tiles[coord.X - 1, coord.Y + 1].obstructed;
-        upRight = coord.Y + 1 < height && coord.X + 1 < width && !Map.instance.tiles[coord.X + 1, coord.Y + 1].obstructed;
-        downLeft = coord.Y - 1 >= 0 && coord.X - 1 >= 0 && !Map.instance.tiles[coord.X - 1, coord.Y - 1].obstructed;
-        downRight = coord.Y - 1 >= 0 && coord.X + 1 < width && !Map.instance.tiles[coord.X + 1, coord.Y - 1].obstructed;
+        int width = Map.instance.passabilityMap.GetLength(0);
+        int height = Map.instance.passabilityMap.GetLength(1);
+        up = coord.Y + 1 < height && Map.instance.passabilityMap[coord.X, coord.Y + 1];
+        down = coord.Y - 1 >= 0 && Map.instance.passabilityMap[coord.X, coord.Y - 1];
+        left = coord.X - 1 >= 0 && Map.instance.passabilityMap[coord.X - 1, coord.Y];
+        right = coord.X + 1 < width && Map.instance.passabilityMap[coord.X + 1, coord.Y];
+        upLeft = coord.Y + 1 < height && coord.X - 1 >= 0 && Map.instance.passabilityMap[coord.X - 1, coord.Y + 1];
+        upRight = coord.Y + 1 < height && coord.X + 1 < width && Map.instance.passabilityMap[coord.X + 1, coord.Y + 1];
+        downLeft = coord.Y - 1 >= 0 && coord.X - 1 >= 0 && Map.instance.passabilityMap[coord.X - 1, coord.Y - 1];
+        downRight = coord.Y - 1 >= 0 && coord.X + 1 < width && Map.instance.passabilityMap[coord.X + 1, coord.Y - 1];
 
         someNeighborObstructed = !(up & down & left & right & upLeft & upRight & downLeft & downRight);
 
@@ -178,8 +178,8 @@ public static class Pathfinding
 
     public static bool DirectionClear(Vector3 start, Vector3 end)
     {
-        int width = Map.instance.tiles.GetLength(0);
-        int height = Map.instance.tiles.GetLength(1);
+        int width = Map.instance.passabilityMap.GetLength(0);
+        int height = Map.instance.passabilityMap.GetLength(1);
         int y0 = Mathf.RoundToInt(start.y);
         int y1 = Mathf.RoundToInt(end.y);
         int x0 = Mathf.RoundToInt(start.x);
@@ -220,9 +220,9 @@ public static class Pathfinding
                 om1Coord = Coord.CoordFromPosition(new Vector2(y - 1, x0 + i));
                 oCoord = Coord.CoordFromPosition(new Vector2(y, x0 + i));
                 op1Coord = Coord.CoordFromPosition(new Vector2(y + 1, x0 + i));
-                om1 = om1Coord.WithinBounds() && !Map.instance.tiles[om1Coord.X, om1Coord.Y].obstructed;
-                o = !Map.instance.tiles[oCoord.X, oCoord.Y].obstructed;
-                op1 = op1Coord.WithinBounds() && !Map.instance.tiles[op1Coord.X, op1Coord.Y].obstructed;
+                om1 = om1Coord.WithinBounds() && Map.instance.passabilityMap[om1Coord.X, om1Coord.Y];
+                o = Map.instance.passabilityMap[oCoord.X, oCoord.Y];
+                op1 = op1Coord.WithinBounds() && !Map.instance.passabilityMap[op1Coord.X, op1Coord.Y];
                 if (!om1 || !o || !op1) return false;
             }
             else
@@ -232,9 +232,9 @@ public static class Pathfinding
                 om1Coord = Coord.CoordFromPosition(new Vector2(x0 + i, y - 1));
                 oCoord = Coord.CoordFromPosition(new Vector2(x0 + i, y));
                 op1Coord = Coord.CoordFromPosition(new Vector2(x0 + i, y + 1));
-                om1 = om1Coord.WithinBounds() && !Map.instance.tiles[om1Coord.X, om1Coord.Y].obstructed;
-                o = !Map.instance.tiles[oCoord.X, oCoord.Y].obstructed;
-                op1 = op1Coord.WithinBounds() && !Map.instance.tiles[op1Coord.X, op1Coord.Y].obstructed;
+                om1 = om1Coord.WithinBounds() && Map.instance.passabilityMap[om1Coord.X, om1Coord.Y];
+                o = Map.instance.passabilityMap[oCoord.X, oCoord.Y];
+                op1 = op1Coord.WithinBounds() && Map.instance.passabilityMap[op1Coord.X, op1Coord.Y];
                 if (!om1 || !o || !op1) return false;
             }
         }
@@ -311,8 +311,8 @@ public static class Pathfinding
 
     public static Stack<Vector2> ConstructPathAStar(Vector2 start, Vector2 goal, System.Func<Coord, Coord, float> heuristic, float nearObstaclePenalty)
     {
-        int width = Map.instance.tiles.GetLength(0);
-        int height = Map.instance.tiles.GetLength(1);
+        int width = Map.instance.passabilityMap.GetLength(0);
+        int height = Map.instance.passabilityMap.GetLength(1);
         pathfindingGrid = new PathfindingCell[width, height];
         queueAStar = new PriorityQueue<float, Coord>();
         Coord startingCoord = Coord.CoordFromPosition(start);
@@ -376,8 +376,8 @@ public static class Pathfinding
     public static Stack<Vector2> ConstructPathAStar(List<Coord> startRegion, List<Coord> goalRegion, System.Func<Coord, Coord, float> heuristic, float nearObstaclePenalty, ref int[,] regionMap, int region)
     {
         Coord goal = null;
-        int width = Map.instance.tiles.GetLength(0);
-        int height = Map.instance.tiles.GetLength(1);
+        int width = Map.instance.passabilityMap.GetLength(0);
+        int height = Map.instance.passabilityMap.GetLength(1);
         pathfindingGrid = new PathfindingCell[width, height];
         queueAStar = new PriorityQueue<float, Coord>();
         Vector2 startRegionSum = new Vector2();
@@ -463,8 +463,8 @@ public static class Pathfinding
     public static Stack<Vector2> ConstructPathAStar(List<Coord> startRegion, List<Coord> goalRegion, System.Func<Coord, Coord, float> heuristic, float nearObstaclePenalty)
     {
         Coord goal = null;
-        int width = Map.instance.tiles.GetLength(0);
-        int height = Map.instance.tiles.GetLength(1);
+        int width = Map.instance.passabilityMap.GetLength(0);
+        int height = Map.instance.passabilityMap.GetLength(1);
         pathfindingGrid = new PathfindingCell[width, height];
         queueAStar = new PriorityQueue<float, Coord>();
         Vector2 startRegionSum = new Vector2();
@@ -546,8 +546,8 @@ public static class Pathfinding
 
     public static PathfindingCell[,] ConstructDistanceField(Coord goal)
     {
-        int width = Map.instance.tiles.GetLength(0);
-        int height = Map.instance.tiles.GetLength(1);
+        int width = Map.instance.passabilityMap.GetLength(0);
+        int height = Map.instance.passabilityMap.GetLength(1);
         pathfindingGrid = new PathfindingCell[width, height];
         queueAStar = new PriorityQueue<float, Coord>();
         pathfindingGrid[goal.X, goal.Y] = new PathfindingCell(0.0f, false, new Coord(-1, -1));
@@ -572,11 +572,11 @@ public static class Pathfinding
                 }
             }
         }
-        for (int x = 0; x < Map.instance.tiles.GetLength(0); x++)
+        for (int x = 0; x < Map.instance.passabilityMap.GetLength(0); x++)
         {
-            for (int y = 0; y < Map.instance.tiles.GetLength(1); y++)
+            for (int y = 0; y < Map.instance.passabilityMap.GetLength(1); y++)
             {
-                if (Map.instance.tiles[x, y].obstructed)
+                if (!Map.instance.passabilityMap[x, y])
                 {
                     pathfindingGrid[x, y] = new PathfindingCell(float.MaxValue, false, null);
                 }
@@ -588,12 +588,12 @@ public static class Pathfinding
     public static Vector2[,] ConstructFlowField(Coord goal)
     {
         PathfindingCell[,] distanceField = ConstructDistanceField(goal);
-        Vector2[,] flowField = new Vector2[Map.instance.tiles.GetLength(0), Map.instance.tiles.GetLength(1)];
-        for (int x = 0; x < Map.instance.tiles.GetLength(0); x++)
+        Vector2[,] flowField = new Vector2[Map.instance.passabilityMap.GetLength(0), Map.instance.passabilityMap.GetLength(1)];
+        for (int x = 0; x < Map.instance.passabilityMap.GetLength(0); x++)
         {
-            for (int y = 0; y < Map.instance.tiles.GetLength(1); y++)
+            for (int y = 0; y < Map.instance.passabilityMap.GetLength(1); y++)
             {
-                if (Map.instance.tiles[x, y].obstructed || distanceField[x,y] == null)
+                if (!Map.instance.passabilityMap[x, y] || distanceField[x,y] == null)
                 {
                     flowField[x, y] = new Vector2(0.0f, 0.0f);
                 }

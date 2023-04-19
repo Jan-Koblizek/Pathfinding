@@ -26,7 +26,7 @@ public class MapRegionSupremeCommander
         {
             for (int j = 0; j < RegionSize; j++)
             {
-                obstructionMap[i, j] = Map.instance.tiles[RegionSize * X + i, RegionSize * Y + j].obstructed;
+                obstructionMap[i, j] = !Map.instance.passabilityMap[RegionSize * X + i, RegionSize * Y + j];
             }
         }
 
@@ -288,8 +288,8 @@ public class MapRegionSupremeCommander
 
     private void initializeGates()
     {
-        int mapWidth = Map.instance.tiles.GetLength(0);
-        int mapHeight = Map.instance.tiles.GetLength(1);
+        int mapWidth = Map.instance.passabilityMap.GetLength(0);
+        int mapHeight = Map.instance.passabilityMap.GetLength(1);
         List<Coord> gateCoordsA = new List<Coord>();
         List<Coord> gateCoordsB = new List<Coord>();
         if (RegionSize * Y + RegionSize < mapHeight)
@@ -297,7 +297,7 @@ public class MapRegionSupremeCommander
             for (int i = 0; i < RegionSize; i++)
             {
                 if (obstructionMap[i, RegionSize - 1] || 
-                    Map.instance.tiles[RegionSize * X + i, RegionSize * Y + RegionSize].obstructed)
+                    !Map.instance.passabilityMap[RegionSize * X + i, RegionSize * Y + RegionSize])
                 {
                     addGateFromGateTiles(gateCoordsA, gateCoordsB, true);
                     gateCoordsA = new List<Coord>();
@@ -319,7 +319,7 @@ public class MapRegionSupremeCommander
             for (int i = 0; i < RegionSize; i++)
             {
                 if (obstructionMap[RegionSize - 1, i] || 
-                    Map.instance.tiles[RegionSize * X + RegionSize, RegionSize * Y + i].obstructed)
+                    !Map.instance.passabilityMap[RegionSize * X + RegionSize, RegionSize * Y + i])
                 {
                     addGateFromGateTiles(gateCoordsA, gateCoordsB, false);
                     gateCoordsA = new List<Coord>();

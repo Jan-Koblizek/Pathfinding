@@ -55,11 +55,11 @@ public class FlowPaths
             float availableCapacity;
             if (start < end)
             {
-                availableCapacity = flowEdge.Capacity - flowEdge.Flow;
+                availableCapacity = flowEdge.MaxFlow - flowEdge.Flow;
             }
             else
             {
-                availableCapacity = flowEdge.Capacity + flowEdge.Flow;
+                availableCapacity = flowEdge.MaxFlow + flowEdge.Flow;
             }
 
             if (availableCapacity < minAvailableCapacity)
@@ -94,7 +94,7 @@ public class FlowPaths
                 flowSplitter.AddEdge(start, end, oppositeDirection);
 
                 flowEdge.Flow += flow;
-                Debug.Assert(flowEdge.Capacity >= flowEdge.Flow - 0.01f, "flowEdge.Capacity > flowEdge.Flow");
+                Debug.Assert(flowEdge.MaxFlow >= flowEdge.Flow - 0.01f, "flowEdge.Capacity > flowEdge.Flow");
             }
             else
             {
@@ -103,7 +103,7 @@ public class FlowPaths
                 flowSplitter.AddEdge(start, end, oppositeDirection);
 
                 flowEdge.Flow -= flow;
-                Debug.Assert(flowEdge.Capacity >= -flowEdge.Flow - 0.01f, "Capacity has to be > Flow");
+                Debug.Assert(flowEdge.MaxFlow >= -flowEdge.Flow - 0.01f, "Capacity has to be > Flow");
             }
         }
 
@@ -215,11 +215,11 @@ public class FlowPaths
         if (!(finishedUnitsLower <= numberOfUnits && numberOfUnits <= finishedUnitsUpper))
         {
 
-            //var str = $" O(1) method failed to compute lower and upper bounds \n({finishedUnitsLower} <= {numberOfUnits} <= {finishedUnitsUpper}), recovered by binary search: ";
+            var str = $" O(1) method failed to compute lower and upper bounds \n({finishedUnitsLower} <= {numberOfUnits} <= {finishedUnitsUpper}), recovered by binary search: ";
             BinarySearch(numberOfUnits, bestPaths, ref lowerBound, ref middleBound, ref upperBound, ref finishedUnitsLower, ref finishedUnitsMiddle, ref finishedUnitsUpper,
                 ref assignmentLower, ref assignmentMiddle, ref assignmentUpper);
 
-            //Debug.Assert(false, str + $"({finishedUnitsLower} <= {numberOfUnits} <= {finishedUnitsUpper})");
+            Debug.Assert(false, str + $"({finishedUnitsLower} <= {numberOfUnits} <= {finishedUnitsUpper})");
         }
 
         //move the middle to be one of the boarders

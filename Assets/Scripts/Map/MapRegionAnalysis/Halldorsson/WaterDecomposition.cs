@@ -9,7 +9,7 @@ using static UnityEditor.Experimental.AssetDatabaseExperimental.AssetDatabaseCou
 public class WaterDecomposition
 {
     private static List<List<Coord>> circleMap;
-    public RegionalDecomposition Decompose(Tile[,] mapSource, int wallThreshold)
+    public RegionalDecomposition Decompose(bool[,] mapSource, int wallThreshold)
     {
         List<RegionGateway> gateways;
         List<MapRegion> mapRegions;
@@ -28,7 +28,7 @@ public class WaterDecomposition
         {
             for (int y = 0; y < mapHeight; y++)
             {
-                obstructionMap[x, y] = !mapSource[x, y].obstructed;
+                obstructionMap[x, y] = mapSource[x, y];
             }
         }
 
@@ -133,8 +133,8 @@ public class WaterDecomposition
                         }
                         ++distance;
                     }
-                    //End by reducing current circle by 1
-                    distance = hitFirstWallDist - 1;
+                    //End by reducing current circle by 2 (because of the octile distance)
+                    distance = Mathf.Max(1, hitFirstWallDist - 2);
                     //distance = 0;
                 }
                 else

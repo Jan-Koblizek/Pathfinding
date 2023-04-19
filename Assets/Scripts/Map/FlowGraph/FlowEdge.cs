@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using Unity.Collections;
 using UnityEngine;
 
 public class FlowEdge
@@ -12,7 +13,7 @@ public class FlowEdge
     public readonly int Id;
 
     public float DrawWidth;
-    public readonly float Capacity;//solver capacity //Width of the gate (not divided by unit size)
+    public readonly float MaxFlow;//solver max flow - units per second
     public readonly FlowNode Start, End;
 
     public readonly float EdgeLength; //solver cost -- the length of the edge in grid units
@@ -33,9 +34,16 @@ public class FlowEdge
 
         EdgeLength = edgeLength;
         DrawWidth = gateWidth;
-        Capacity = gateWidth / (2 * SimulationSettings.UnitRadius + 0.4f); // 2* (Unit radius + small space between units) -> the size expresses how m times unit can fit into it - in future use EdgeCapacity method instead this
+        MaxFlow = GetMaxFlow(gateWidth); 
         Id = _globalEdgeIdCounter++;
         Flow = 0;
+    }
+
+    private float GetMaxFlow(float gateWidth)
+    {
+        float horizontalCapacity = gateWidth / (2 * SimulationSettings.UnitRadius + 1.0f);
+        float verticalCapacity = 1.0f / (2 * SimulationSettings.UnitRadius + 1.0f);
+        return SimulationSettings.instance.UnitSpeed * 0.9f * horizontalCapacity * verticalCapacity;
     }
 
     /// <summary>
@@ -60,26 +68,6 @@ public class FlowEdge
     public static void ResetCounter()
     {
         _globalEdgeIdCounter = 0;
-    }
-
-    public float TimeSpentInTheEdge(float unitSpeed, float unitRadius)
-    {
-        return EdgeLength / unitSpeed;
-    }
-
-    public int EdgeCapacity(float unitRadius)
-    {
-        if (2 * unitRadius > this.Capacity)
-            return 0;
-
-        // ReSharper disable once CompareOfFloatsByEqualityOperator
-        if (this.EdgeLength == 0)
-        {
-            return Int32.MaxValue;
-        }
-
-        double howManyUnitsFitIntoThePath = (this.EdgeLength * this.Capacity / Math.Pow(2 * unitRadius, 2));
-        return (int)Math.Ceiling(howManyUnitsFitIntoThePath);
     }
 
 

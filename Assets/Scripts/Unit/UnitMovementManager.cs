@@ -1,16 +1,53 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using Unity.Collections;
+using Unity.Jobs;
 using UnityEngine;
-using UnityEngine.UIElements;
 
 public class UnitMovementManager : MonoBehaviour
 {
     [HideInInspector]
     public List<Unit> units = new List<Unit>();
+    public Dictionary<Unit, UnitVisualization> unitsToVisualizations;
+
+    private List<Unit> unitsToDelete = new List<Unit>();
+    private UnitsECS unitsECS = null;
     public void SetUnits(List<Unit> units)
     {
         this.units = units;
+        unitsToVisualizations = null;
+        if (unitsECS == null)
+        {
+            unitsECS = new UnitsECS();
+        }
+        unitsECS.InitializeUnits(units);
+    }
+
+    public void SetUnits(List<Unit> units, List<UnitVisualization> unitVisualizations)
+    {
+        this.units = units;
+        unitsToVisualizations = new Dictionary<Unit, UnitVisualization>();
+        for (int i = 0; i < units.Count; i++)
+        {
+            unitsToVisualizations[units[i]] = unitVisualizations[i];
+        }
+        if (unitsECS == null)
+        {
+            unitsECS = new UnitsECS();
+        }
+        unitsECS.InitializeUnits(units);
+    }
+
+    public void RemoveUnit(Unit unit)
+    {
+        if (unitsToVisualizations != null)
+        {
+            Destroy(unitsToVisualizations[unit].gameObject);
+            unitsToVisualizations.Remove(unit);
+        }
+        unitsToDelete.Add(unit);
     }
 
     public void StartWarmUp(MovementMode movementMode, Vector2 start, Vector2 target)
@@ -56,12 +93,14 @@ public class UnitMovementManager : MonoBehaviour
             case MovementMode.FlowField:
                 pathfindingStopWatch.Start();
                 FlowField flowField = new FlowField(Coord.CoordFromPosition(Simulator.Instance.target.Center));
+
                 foreach (Unit unit in units)
                 {
                     unit.UseFlowField(flowField);
                     unit.SetTarget(Simulator.Instance.target);
                     unit.movementMode = MovementMode.FlowField;
                 }
+
                 pathfindingStopWatch.Stop();
                 break;
             case MovementMode.PathFollowing:
@@ -120,7 +159,6 @@ public class UnitMovementManager : MonoBehaviour
 
                 foreach (Unit unit in units)
                 {
-                    //RegionalPath regionalPath = new RegionalPath(Simulator.Instance.regionalPathfinding, unit.position, Simulator.Instance.target.Center);
                     unit.UseRegionalPath(regionalPath);
                     unit.SetTarget(Simulator.Instance.target);
                     unit.movementMode = MovementMode.RegionalPath;
@@ -149,16 +187,90 @@ public class UnitMovementManager : MonoBehaviour
         }
         Debug.Log($"Pathfinding Took: {pathfindingStopWatch.Elapsed.TotalMilliseconds} ms");
     }
-
-    public void MoveUnits()
+    /*
+    private struct GetSeekForcesJob : IJobParallelFor
     {
-        foreach (Unit unit in units)
+        public float deltaTime;
+        public NativeArray<Vector2> seekForces;
+        [ReadOnly]
+        public List<Unit> units;
+        public void Execute(int index)
         {
-            if (unit != null)
+            seekForces[index] = units[index].GetSeekForce(deltaTime);
+            units[index].desiredVelocity = SimulationSettings.instance.UnitSpeed * seekForces[index];
+        }
+    }
+    */
+
+    public void MoveUnits(float deltaTime, int internalMovementCycles)
+    {
+        //System.Diagnostics.Stopwatch stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        //stopwatch.Start();
+        if (unitsECS != null)
+        {
+            NativeArray<Vector2> seekForces = new NativeArray<Vector2>(units.Count, Allocator.TempJob);
+
+            for (int i = 0; i < units.Count; i++)
             {
-                unit.Move();
+                seekForces[i] = units[i].GetSeekForce(internalMovementCycles * deltaTime);
+                units[i].desiredVelocity = SimulationSettings.instance.UnitSpeed * seekForces[i];
+            }
+
+            for (int i = 0; i < internalMovementCycles; i++)
+            {
+                unitsECS.UpdateUnits(units);
+                unitsECS.GetForces(seekForces, deltaTime);
+                unitsECS.GetNewPositionsAndVelocities(units, deltaTime);
+            }
+            //System.Diagnostics.Stopwatch removingUnitsStopWatch = new System.Diagnostics.Stopwatch();
+            //removingUnitsStopWatch.Start();
+            for (int i = 0; i < units.Count; i++)
+            {
+                units[i].TargetReachedTestAndResponse(deltaTime * internalMovementCycles);
+            }
+            //removingUnitsStopWatch.Stop();
+            //Debug.Log($"Removing units stopwatch {removingUnitsStopWatch.Elapsed.TotalMilliseconds}");
+            seekForces.Dispose();
+        }
+        else
+        {        
+            foreach (Unit unit in units)
+            {
+                if (unit != null)
+                {
+                    Vector2 force = unit.ComputeForces(deltaTime);
+                    unit.CalculateNewPosition(deltaTime, force);
+                }
+            }
+            foreach (Unit unit in units)
+            {
+                unit.UpdatePositionAndVelocity();
             }
         }
+
+        foreach (Unit deletedUnit in unitsToDelete)
+        {
+            units.Remove(deletedUnit);
+        }
+        if (unitsToDelete.Count > 0 && unitsECS != null)
+        {
+            unitsECS.UnitsRemoved(units);
+        }
+        
+        unitsToDelete = new List<Unit>();
+
+        if (unitsToVisualizations != null)
+        {
+            foreach (Unit unit in units)
+            {
+                unitsToVisualizations[unit].position = unit.position;
+            }
+        }
+        /*
+        stopwatch.Stop();
+        if (stopwatch.Elapsed.TotalMilliseconds > 50)
+            Debug.Log($"Unit positions updating {stopwatch.Elapsed.TotalMilliseconds}ms");
+        */
     }
 
     public void CleanUnitList()
@@ -167,5 +279,18 @@ public class UnitMovementManager : MonoBehaviour
         {
             if (units[i] == null) units.RemoveAt(i);
         }
+    }
+
+    private void CleanECS()
+    {
+        if (unitsECS != null)
+        {
+            unitsECS.CleanArrays();
+        }
+    }
+
+    private void OnDestroy()
+    {
+        CleanECS();
     }
 }
