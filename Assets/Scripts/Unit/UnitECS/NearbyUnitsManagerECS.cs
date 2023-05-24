@@ -266,18 +266,48 @@ public class NearbyUnitsManagerECS
                 if (Vector2.Distance(unitPositions[index], unit.position) < 1.6f * 2 * unitRadius)
                 {
                     Vector2 avoidanceForce = GetVelocitySteeringFromAnotherUnit(index, unit);
+                    //Vector2 avoidanceForce = GetSteeringFromAnotherUnit(index, unit);
                     overallAvoidanceForce += avoidanceForce;
                 }
             }
             return overallAvoidanceForce.LimitMagnitude(maxForce);
         }
 
+        private Vector2 GetSteeringFromAnotherUnit(int index, (Vector2 position, Vector2 velocity, Vector2 desiredVelocity, int otherUnitID) otherUnit)
+        {
+            var relativePosition = (unitPositions[index]) - otherUnit.position;
+            //var relativeVelocity = (unitVelocities[index] - otherUnit.velocity);
+            var relativeVelocity = (desiredVelocities[index] - otherUnit.desiredVelocity);
+            float timeToCollision = (relativePosition.magnitude - 2 * SimulationSettings.UnitRadius) / relativeVelocity.magnitude;
+            //Debug.Log($"angle1 {Vector2.SignedAngle(relativePosition, relativeVelocity)}, angle2 {Vector2.SignedAngle(relativePosition, relativeVelocity)}");
+
+            if (Geometry.CircleIntersectsRay(relativePosition, relativePosition + relativeVelocity, 2 * SimulationSettings.UnitRadius))
+            {
+                relativePosition.Normalize();
+                relativeVelocity.Normalize();
+                Vector2 direction;
+                if (Vector2.SignedAngle(relativePosition, relativeVelocity) > 0)
+                {
+                    direction = relativePosition.Rotate(90);
+                }
+                else
+                {
+                    direction = relativePosition.Rotate(-90);
+                }
+                return direction;
+            }
+            else
+            {
+                return Vector2.zero;
+            }
+        }
+
         private Vector2 GetVelocitySteeringFromAnotherUnit(int index, (Vector2 position, Vector2 velocity, Vector2 desiredVelocity, int otherUnitID) otherUnit)
         {
             var collidingRadius = 2 * unitRadius;
             collidingRadius *= 1;
-            var relativePosition = (unitPositions[index]) - (otherUnit.otherUnitID < index ? otherUnit.position + otherUnit.velocity * deltaTime : otherUnit.position);
-            var relativeVelocity = desiredVelocities[index] - otherUnit.desiredVelocity;
+            var relativePosition = (unitPositions[index]) - /*(otherUnit.otherUnitID < index ? otherUnit.position + otherUnit.velocity * deltaTime : */otherUnit.position;
+            var relativeVelocity = (unitVelocities[index] - otherUnit.velocity);
 
             var possibleCollisionAtStep = relativePosition.magnitude / relativeVelocity.magnitude;
 
@@ -291,10 +321,10 @@ public class NearbyUnitsManagerECS
                 {
                     uint seed = (uint)index + (uint)(otherUnit.position.x * 1352484635 + otherUnit.position.y * 24622789637);
                     if (seed == 0) seed = 42;
-                    angle = new Unity.Mathematics.Random(seed).NextFloat(-1.0f, 1.0f) * 0.001f;
+                    angle = new Unity.Mathematics.Random(seed).NextFloat(-1.0f, 1.0f) * 0.001f + angle;
                 }
 
-                var normal = GetVelocityAvoidanceDirectionVector(relativePosition, angle, collidingRadius, relativeVelocity, out float size);
+                var normal = GetVelocityAvoidanceDirectionVector(relativePosition, angle, collidingRadius, relativeVelocity);
                 return normal;
             }
             else
@@ -312,32 +342,26 @@ public class NearbyUnitsManagerECS
         /// <param name="relativeVelocity"></param>
         /// <param name="size">how much steering is necessary</param>   
         /// <returns></returns>
-        private Vector2 GetVelocityAvoidanceDirectionVector(Vector2 relativePosition, float angle, float collidingRadius, Vector2 relativeVelocity, out float size)
+        private Vector2 GetVelocityAvoidanceDirectionVector(Vector2 relativePosition, float angle, float collidingRadius, Vector2 relativeVelocity)
         {
-            var horizontalIntersection = Geometry.GetHorizontalIntersection(relativePosition, angle, 0);
-            var verticalIntersection = Geometry.GetVerticalIntersection(relativePosition, angle, 0);
+            Vector2 horizontalIntersection = Geometry.GetHorizontalIntersection(relativePosition, angle, 0);
+            Vector2 verticalIntersection = Geometry.GetVerticalIntersection(relativePosition, angle, 0);
 
-            var intersection = Mathf.Abs(horizontalIntersection.x) < Mathf.Abs(verticalIntersection.y)
+            Vector2 intersection = Mathf.Abs(horizontalIntersection.x) < Mathf.Abs(verticalIntersection.y)
                         ? horizontalIntersection
                         : verticalIntersection;
 
-            //DebugOutput.WriteLine($"[{ID} (vs{unit.ID})] rv:{relativeVelocity}, rp:{relativePosition}, inters: h:{horizontalIntersection.X}, v:{verticalIntersection.Y}");
-
-            var intersectionDistance = intersection.x == 0 ? intersection.y : intersection.x;
-            size = intersectionDistance > 0 ? collidingRadius - intersectionDistance : collidingRadius + intersectionDistance;
-            //Debug.Assert(Mathf.Abs(intersectionDistance) <= collidingRadius * 1.5f);
-            //if (Mathf.Abs(intersectionDistance) > collidingRadius * 1.5f) Debug.Log(intersectionDistance);
             if (intersection == verticalIntersection)
             {
                 if (relativeVelocity.x * verticalIntersection.y < 0)
-                    return relativeVelocity.PerpendicularClockwise();
-                return relativeVelocity.PerpendicularCounterClockwise();
+                    return relativeVelocity.Rotate(-90);
+                return relativeVelocity.Rotate(90);
             }
             else
             {
                 if (relativeVelocity.y * horizontalIntersection.x > 0)
-                    return relativeVelocity.PerpendicularClockwise();
-                return relativeVelocity.PerpendicularCounterClockwise();
+                    return relativeVelocity.Rotate(-90);
+                return relativeVelocity.Rotate(90);
             }
         }
 
@@ -376,7 +400,8 @@ public class NearbyUnitsManagerECS
         private float SeparationForceCalculator(float boundsDistance)
         {
             float factor = Mathf.Clamp01(1.0f - boundsDistance);
-            return Mathf.Max(factor * factor * factor * factor * factor * factor, factor * factor * 0.25f);
+            float factor2 = Mathf.Clamp01(3*factor-2)*2 + 1;
+            return Mathf.Max(factor2 * factor2 * factor * factor * factor * factor * factor * factor, factor * factor * 0.25f);
         }
 
         private Vector2 getAlignmentForce(int index, NativeList<(Vector2 position, Vector2 velocity, Vector2 desiredVelocity, int otherUnitID)> nearbyUnits)

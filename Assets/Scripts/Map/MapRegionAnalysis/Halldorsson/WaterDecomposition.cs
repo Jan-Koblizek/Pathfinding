@@ -1,10 +1,9 @@
-using System.Collections;
+using System;
 using System.Collections.Generic;
+using System.IO.IsolatedStorage;
 using Unity.VisualScripting;
-using UnityEditor.Search;
 using UnityEngine;
 using utils;
-using static UnityEditor.Experimental.AssetDatabaseExperimental.AssetDatabaseCounters;
 
 public class WaterDecomposition
 {
@@ -36,6 +35,7 @@ public class WaterDecomposition
         buildDepthMap(obstructionMap, wallThreshold, mapWidth, mapHeight, out depthMap, out maxDepthUsed);
         buildRegionsMap(obstructionMap, maxDepthUsed, mapWidth, mapHeight, ref depthMap, out regionMap, out mapRegions, out numberOfClusters);
         refineRegions(obstructionMap, mapWidth, mapHeight, ref regionMap, ref depthMap, ref mapRegions);
+        //clearWeirdNeighborhoods(obstructionMap, mapWidth, mapHeight, ref regionMap, ref depthMap, ref mapRegions);
         buildGates(obstructionMap, mapWidth, mapHeight, ref regionMap, out gateways, ref mapRegions);
         refineGates(obstructionMap, ref gateways, gateRegionIndex, ref regionMap);
         return new RegionalDecomposition(gateways, mapRegions, depthMap, numberOfClusters, regionMap, obstructionMap);
@@ -55,7 +55,7 @@ public class WaterDecomposition
          */
 
         circleMap = new List<List<Coord>>();
-        int maxDist = ((Mathf.Min(mapWidth, mapHeight) / 2) + 1);
+        int maxDist = Mathf.RoundToInt(1.4f * (Mathf.Min(mapWidth, mapHeight) / 2) + 1);
 
         for (int i = 0; i <= maxDist; i++)
         {
@@ -340,6 +340,100 @@ public class WaterDecomposition
         }
     }
 
+    private void clearWeirdNeighborhoods(bool[,] map, int mapWidth, int mapHeight, ref int[,] regionMap, ref int[,] depthMap, ref List<MapRegion> regions)
+    {
+        for (int x = 1; x < mapWidth; x++)
+        {
+            for (int y = 1; y < mapHeight; y++)
+            {
+                int region1 = regionMap[x - 1, y - 1];
+                int region2 = regionMap[x, y - 1];
+                int region3 = regionMap[x - 1, y];
+                int region4 = regionMap[x, y];
+                HashSet<int> nearbyRegions = new HashSet<int>();
+                if (region1 != -1) nearbyRegions.Add(region1);
+                if (region2 != -1) nearbyRegions.Add(region2);
+                if (region3 != -1) nearbyRegions.Add(region3);
+                if (region4 != -1) nearbyRegions.Add(region4);
+
+                if (nearbyRegions.Count > 2)
+                {
+                    Debug.Log("More nearby regions");
+                    Debug.Log($"{region1}, {region2}, {region3}, {region4}");
+                    List<HashSet<int>> regionBorderEnds = new List<HashSet<int>>();
+                    List<(int x, int y)> regionBorderEndPositions = new List<(int x, int y)>();
+                    for (int distance = 0; distance < circleMap.Count; distance++)
+                    {
+                        for (int quadrant = 0; quadrant < 4; quadrant++)
+                        {
+                            for (int it = 0; it < circleMap[distance].Count; it++)
+                            {
+                                int x2 = 0, y2 = 0;
+                                if (quadrant == 0)
+                                {
+                                    x2 = circleMap[distance][it].X + x;
+                                    y2 = circleMap[distance][it].Y + y;
+                                }
+                                else if (quadrant == 1)
+                                {
+                                    x2 = -circleMap[distance][it].X + x;
+                                    y2 = circleMap[distance][it].Y + y;
+                                }
+                                else if (quadrant == 2)
+                                {
+                                    x2 = circleMap[distance][it].X + x;
+                                    y2 = -circleMap[distance][it].Y + y;
+                                }
+                                else if (quadrant == 3)
+                                {
+                                    x2 = -circleMap[distance][it].X + x;
+                                    y2 = -circleMap[distance][it].Y + y;
+                                }
+
+                                int regionCircle = regionMap[x2, y2];
+                                int regionCircle1 = regionMap[x2 - 1, y2];
+                                int regionCircle2 = regionMap[x2, y2 - 1];
+                                int regionCircle3 = regionMap[x2 + 1, y2];
+                                int regionCircle4 = regionMap[x2, y2 + 1];
+
+                                if (regionCircle != -1 && (
+                                    regionCircle1 == -1 || regionCircle2 == -1 || regionCircle3 == -1 || regionCircle4 == -1))
+                                {
+                                    int regionA = regionCircle;
+                                    int regionB = -1;
+                                    if (nearbyRegions.Contains(regionCircle))
+                                    {
+                                        if (regionCircle1 != regionCircle && nearbyRegions.Contains(regionCircle1))
+                                            regionB = regionCircle1;
+                                        if (regionCircle2 != regionCircle && nearbyRegions.Contains(regionCircle2))
+                                            regionB = regionCircle2;
+                                        if (regionCircle3 != regionCircle && nearbyRegions.Contains(regionCircle3))
+                                            regionB = regionCircle3;
+                                        if (regionCircle4 != regionCircle && nearbyRegions.Contains(regionCircle4))
+                                            regionB = regionCircle4;
+                                    }
+
+                                    if (regionB != -1 && (regionBorderEnds.Count == 0 || (!regionBorderEnds[0].Contains(regionB) || !regionBorderEnds[0].Contains(regionA))))
+                                    {
+                                        Debug.Log($"Adding {regionA}, {regionB}");
+                                        regionBorderEndPositions.Add(new(x2, y2));
+                                        regionBorderEnds.Add(new HashSet<int> { regionA, regionB });
+                                    }
+                                    if (regionBorderEnds.Count > 1)
+                                    {
+                                        Debug.Log("Border ends found");
+                                        break;
+                                    }
+                                }
+                            }
+                            if (regionBorderEnds.Count > 1) break;
+                        }
+                        if (regionBorderEnds.Count > 1) break;
+                    }
+                }
+            }
+        }
+    }
     private void TryToMergeRegions(ref Dictionary<int, Dictionary<int, (int totalGateTiles, int maxGateDepth, Coord gateCentre)>> mapRegionNeighbors, ref int[,] regionMap, ref int[,] depthMap, ref List<MapRegion> regions, out bool mergingPerformed)
     {
         mergingPerformed = false;

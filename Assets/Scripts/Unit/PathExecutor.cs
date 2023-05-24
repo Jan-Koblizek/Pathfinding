@@ -12,7 +12,7 @@ public class PathExecutor
     public Vector2 steeringTarget;
     private List<Vector2> path;
 
-    private float targetUpdatePeriod = 2.0f;
+    private float targetUpdatePeriod = 5.0f;
     private float targetUpdateTime;
 
     private int targetLastSeenCounter = 0;
@@ -137,6 +137,7 @@ public class PathExecutor
     {
         targetLastSeenCounter++;
         if (targetLastSeenCounter <= recalculatePathThreshold) return;
+        unit.repaths++;
         path = Pathfinding.ConstructPathAStar(unit.position, path[path.Count - 1], Pathfinding.StepDistance, 0.2f).ToList();
     }
 }

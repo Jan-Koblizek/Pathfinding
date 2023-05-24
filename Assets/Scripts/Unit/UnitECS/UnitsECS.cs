@@ -36,7 +36,7 @@ public class UnitsECS
         unitVelocities = new NativeList<Vector2>(units.Count, Allocator.Persistent);
         unitMovements = new NativeList<Vector2>(units.Count, Allocator.Persistent);
         unitDesiredVelocities = new NativeList<Vector2>(units.Count, Allocator.Persistent);
-        forces = new NativeList<Vector2>(units.Count, Allocator.TempJob);
+        forces = new NativeList<Vector2>(units.Count, Allocator.Persistent);
 
         for (int i = 0; i < units.Count; i++)
         {
@@ -142,6 +142,7 @@ public class UnitsECS
   
         JobHandle forcesJobHandle;
         CombineForcesJob forcesJob;
+        //Debug.Log(unitVelocities[0].magnitude);
         forcesJob = new CombineForcesJob()
         {
             forces = forces,
@@ -151,6 +152,7 @@ public class UnitsECS
             unitSeparationForces = unitSeparationForces,
             alignmentForces = alignmentForces,
             unitAvoidanceForces = unitAvoidanceForces,
+            velocities = this.unitVelocities,
             maxForce = SimulationSettings.instance.MaxForce
         };
         forcesJobHandle = forcesJob.Schedule(unitPositions.Length, 64);
@@ -246,14 +248,20 @@ public class UnitsECS
         public NativeArray<Vector2> alignmentForces;
         [ReadOnly]
         public NativeArray<Vector2> unitAvoidanceForces;
+        [ReadOnly]
+        public NativeArray<Vector2> velocities;
 
         [ReadOnly]
         public float maxForce;
 
         public void Execute(int index)
         {
+            //float unitAvoidanceForceMagnitude = Mathf.Clamp(unitAvoidanceForces[index].magnitude, 0.0f, 1.0f);
+            //float speedFactor = 1.0f - Mathf.Clamp(2 * velocities[index].magnitude - 1.0f, 0.0f, 1.0f);
+            //float factor = unitAvoidanceForceMagnitude * (speedFactor * speedFactor);
+            float factor = Mathf.Clamp((2.0f * unitSeparationForces[index].magnitude - 1.0f), 0.0f, 1.0f);
             Vector2 force =
-                15.0f * seekForces[index] +
+                (15.0f - 20.0f * factor) * seekForces[index] +
                 100.0f * unitSeparationForces[index] +
                 50.0f * wallRepulsionForces[index] +
                 10.0f * wallTurningForces[index] +

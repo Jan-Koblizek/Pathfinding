@@ -1236,28 +1236,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 14722e606629c82419cc311c26b3902b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  writeResults: 1
   automaticSimulation: 1
-  numberOfSimulations: 3
-  movementModesTestedAutomatic: 03000000050000000600000001000000
-  internalMovementCycles: 3
+  numberOfSimulations: 2
+  movementModesTestedAutomatic: 05000000060000000000000002000000
+  internalMovementCycles: 2
   outerMovementCycles: 10
   drawUnits: 1
-  simulationSpecification: {fileID: 11400000, guid: 59e74a0d1d2762948ac368480a36c8d5, type: 2}
+  simulationSpecification: {fileID: 11400000, guid: 892b8bc81aeee424f966f9b11c5fa65b, type: 2}
   unitMovementManager: {fileID: 1257111349}
   unitPrefab: {fileID: 6790476649160748438, guid: 7d37d28fa24eafa4aaced73f99b47fe7, type: 3}
   unitsParent: {fileID: 45594955}
   targetPrefab: {fileID: 8736026891837571785, guid: 8daea8d1896e41b4baf49165cc1ee218, type: 3}
   movementMode: 6
-  warmUpStartPositions:
-  - {x: 130, y: 5}
-  - {x: 250, y: 5}
-  - {x: 5, y: 125}
-  warmUpTargetPositions:
-  - {x: 20, y: 230}
-  - {x: 50, y: 250}
-  - {x: 120, y: 250}
-  - {x: 155, y: 206}
   target: {fileID: 0}
+  warmUpGoalPositions: []
+  warmUpStartPositions: []
   simulationStarted: 0
   simulationFinished: 0
 --- !u!114 &1257111349

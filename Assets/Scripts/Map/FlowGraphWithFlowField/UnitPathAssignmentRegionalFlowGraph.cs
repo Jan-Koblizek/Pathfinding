@@ -6,11 +6,11 @@ using UnityEngine;
 
 public class UnitPathAssignmentRegionalFlowGraph
 {
-    public readonly int _assignedUnits;
-    public readonly float _flow;
+    public readonly int assignedUnits;
+    public readonly float flow;
     private readonly PathID _pathID;
-    private readonly List<Vector2> _centerList;
-    private readonly List<FlowNode> nodes;
+    public readonly List<Vector2> centerList;
+    public readonly List<FlowNode> nodes;
     public int indexOfGridPath;
 
     /// <summary>
@@ -21,8 +21,8 @@ public class UnitPathAssignmentRegionalFlowGraph
     /// <param name="centerList"></param>
     public UnitPathAssignmentRegionalFlowGraph(int assignedUnits, PathID pathID, List<Vector2> centerList, FlowGraph flowGraph)
     {
-        _flow = PlannerPath.GetPathById(pathID).Flow;
-        _assignedUnits = assignedUnits;
+        flow = PlannerPath.GetPathById(pathID).Flow;
+        this.assignedUnits = assignedUnits;
         _pathID = pathID;
         List<NodeID> nodeIDs = PlannerPath.GetPathById(pathID).Path;
         nodes = new List<FlowNode>();
@@ -30,7 +30,7 @@ public class UnitPathAssignmentRegionalFlowGraph
         {
             nodes.Add(flowGraph.GetFlowNodeByID(nodeIDs[i].nodeID));
         }
-        _centerList = centerList;
+        this.centerList = centerList;
     }
 
     /// <summary>
@@ -325,7 +325,7 @@ public class UnitPathAssignmentRegionalFlowGraph
 
         for (int i = 0; i < pathsForUnits.Count; i++)
         {
-            regionalPaths.Add((gridPaths[i], pathsForUnits[i]._flow, pathsForUnits[i]._assignedUnits));
+            regionalPaths.Add((gridPaths[i], pathsForUnits[i].flow, pathsForUnits[i].assignedUnits));
         }
 
         RegionalFlowGraphPath regionalFlowGraphPath = new RegionalFlowGraphPath(regionalPaths);
@@ -344,7 +344,7 @@ public class UnitPathAssignmentRegionalFlowGraph
 
         for (int i = 0; i < pathsForUnits.Count; i++)
         {
-            regionalPaths.Add((gridPaths[i], pathsForUnits[i]._flow, pathsForUnits[i]._assignedUnits));
+            regionalPaths.Add((gridPaths[i], pathsForUnits[i].flow, pathsForUnits[i].assignedUnits));
         }
 
         RegionalFlowGraphPathUsingSubPaths regionalFlowGraphPath = new RegionalFlowGraphPathUsingSubPaths(regionalPaths);
@@ -423,7 +423,7 @@ public class UnitPathAssignmentRegionalFlowGraph
         List<UnitPathAssignmentRegionalFlowGraph> tmp = new List<UnitPathAssignmentRegionalFlowGraph>();
         foreach (var unitPath in pathsForUnits)
         {
-            if (unitPath._assignedUnits == 0)
+            if (unitPath.assignedUnits == 0)
             {
                 continue;
             }
@@ -445,6 +445,7 @@ public class UnitPathAssignmentRegionalFlowGraph
         for (int i = 0; i < pathsForUnits.Count; i++)
         {
             UnitPathAssignmentRegionalFlowGraph possiblePath = pathsForUnits[i];
+            //Debug.Log($"{i}, {possiblePath.nodes.Count}, {possiblePath.centerList.Count}");
             RegionalPath regionalPath = new RegionalPath();
             regionalPath.regionalPathfindingAnalysis = Simulator.Instance.regionalPathfinding;
             RegionGateway currentGateway = null;
@@ -462,16 +463,28 @@ public class UnitPathAssignmentRegionalFlowGraph
                     gatewayDirections[currentGateway.ID] = currentGateway.regionA != currentRegion ? 0 : 1;
                 }
             }
-            List<Vector2> finalPath = Pathfinding.ConstructPathAStar(
-                            regionGateways[regionGateways.Count - 1].GetCentralPosition(), 
-                            possiblePath._centerList[possiblePath._centerList.Count - 1], 
-                            Pathfinding.StepDistance, 0.2f).ToList();
+
+            List<Vector2> finalPath;
+            if (regionGateways.Count > 0)
+            {
+                finalPath = Pathfinding.ConstructPathAStar(
+                                regionGateways[regionGateways.Count - 1].GetCentralPosition(),
+                                possiblePath.centerList[possiblePath.centerList.Count - 1],
+                                Pathfinding.StepDistance, 0.2f).ToList();
+            }
+            else
+            {
+                finalPath = Pathfinding.ConstructPathAStar(
+                    possiblePath.centerList[0],
+                    possiblePath.centerList[possiblePath.centerList.Count - 1],
+                    Pathfinding.StepDistance, 0.2f).ToList();
+            }
 
             regionalPath.finalPath = finalPath;
             regionalPath.regionDirections = regionDirections;
             regionalPath.gatewayDirections = gatewayDirections;
             regionalPath.gatewayPath = regionGateways;
-            regionalPath.goalCoord = Coord.CoordFromPosition(possiblePath._centerList[possiblePath._centerList.Count - 1]);
+            regionalPath.goalCoord = Coord.CoordFromPosition(possiblePath.centerList[possiblePath.centerList.Count - 1]);
             gridPaths.Add(regionalPath);
         }
         return gridPaths;
@@ -508,11 +521,11 @@ public class UnitPathAssignmentRegionalFlowGraph
             }
             List<Vector2> finalPath = Pathfinding.ConstructPathAStar(
                             regionGateways[regionGateways.Count - 1].GetCentralPosition(),
-                            possiblePath._centerList[possiblePath._centerList.Count - 1],
+                            possiblePath.centerList[possiblePath.centerList.Count - 1],
                             Pathfinding.StepDistance, 0.2f).ToList();
 
             List<Vector2> startingPath = Pathfinding.ConstructPathAStar(
-                possiblePath._centerList[0],
+                possiblePath.centerList[0],
                 regionGateways[0].GetCentralPosition(),
                 Pathfinding.StepDistance, 0.2f).ToList();
 
@@ -525,7 +538,7 @@ public class UnitPathAssignmentRegionalFlowGraph
             regionalPath.regionDirections = regionDirections;
             regionalPath.gatewayDirections = gatewayDirections;
             regionalPath.gatewayPath = regionGateways;
-            regionalPath.goalCoord = Coord.CoordFromPosition(possiblePath._centerList[possiblePath._centerList.Count - 1]);
+            regionalPath.goalCoord = Coord.CoordFromPosition(possiblePath.centerList[possiblePath.centerList.Count - 1]);
             gridPaths.Add(regionalPath);
         }
         return gridPaths;

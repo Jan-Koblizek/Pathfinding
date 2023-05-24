@@ -39,11 +39,11 @@ public class FlowEdge
         Flow = 0;
     }
 
-    private float GetMaxFlow(float gateWidth)
+    public static float GetMaxFlow(float gateWidth)
     {
-        float horizontalCapacity = gateWidth / (2 * SimulationSettings.UnitRadius + 1.0f);
-        float verticalCapacity = 1.0f / (2 * SimulationSettings.UnitRadius + 1.0f);
-        return SimulationSettings.instance.UnitSpeed * 0.9f * horizontalCapacity * verticalCapacity;
+        float horizontalCapacity = gateWidth / (2 * SimulationSettings.UnitRadius + 0.3f);
+        float verticalCapacity = 1.0f / (2 * SimulationSettings.UnitRadius + 0.7f);
+        return SimulationSettings.instance.UnitSpeed * horizontalCapacity * verticalCapacity;
     }
 
     /// <summary>

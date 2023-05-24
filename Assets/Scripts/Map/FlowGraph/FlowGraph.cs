@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using Unity.VisualScripting;
 using UnityEngine;
 using utils;
 
@@ -20,8 +19,6 @@ public class FlowGraph
     private readonly Dictionary<int, FlowNode> _idToNodes;
     private readonly Dictionary<int, FlowEdge> _idToEdges;
     private readonly Dictionary<(int, int), (int, float)> _nodesIdsToEdgeIdCost;
-
-    public RegionalDecomposition decomposition;
 
     public float DistanceToGoal(int from, IList<int> goal)
     {
@@ -110,6 +107,86 @@ public class FlowGraph
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public FlowGraph(PartialFlowGraph partialFlowGraph, Vector2 source, Vector2 goal, int[,] regionalMap, RegionalPathfindingAnalysis analysis)
+    {
+        Coord sourceCoord = Coord.CoordFromPosition(source);
+        int sourceZone = regionalMap[sourceCoord.X, sourceCoord.Y];
+        MapRegion sourceRegion = analysis.decomposition.mapRegions[sourceZone];
+        Coord goalCoord = Coord.CoordFromPosition(goal);
+        int goalZone = regionalMap[goalCoord.X, goalCoord.Y];
+        MapRegion goalRegion = analysis.decomposition.mapRegions[goalZone];
+        Source = new FlowNode(source, sourceZone);
+        Terminal = new FlowNode(goal, goalZone);
+
+        Edges = partialFlowGraph.Edges;
+        ZoneNodes = new List<FlowNode>();
+        GateNodes = new List<FlowNode>();
+        ZoneNodes.AddRange(partialFlowGraph.Nodes);
+        NodeToEdges = partialFlowGraph.NodeToEdges;
+        ZoneNodes.Add(Source);
+        ZoneNodes.Add(Terminal);
+        _idToNodes = partialFlowGraph._idToNodes;
+        _idToNodes.Add(Source.Id, Source);
+        _idToNodes.Add(Terminal.Id, Terminal);
+        _idToEdges = partialFlowGraph._idToEdges;
+        _nodesIdsToEdgeIdCost = partialFlowGraph._nodesIdsToEdgeIdCost;
+        NodeToEdges[Source] = new HashSet<FlowEdge>();
+        NodeToEdges[Terminal] = new HashSet<FlowEdge>();
+
+        if (goalZone == sourceZone)
+        {
+            FlowEdge directEdge = new FlowEdge(Source, Terminal, Vector2.Distance(goal, source), 1000000);
+            Edges.Add(directEdge);
+            _idToEdges.Add(directEdge.Id, directEdge);
+            (int, int) key = (Source.Id, Terminal.Id);
+            (int, int) opposite = (Terminal.Id, Source.Id);
+            (int, float) value = (directEdge.Id, directEdge.EdgeLength);
+            _nodesIdsToEdgeIdCost[key] = value;
+            _nodesIdsToEdgeIdCost[opposite] = value;
+            NodeToEdges[Terminal].Add(directEdge);
+            NodeToEdges[Source].Add(directEdge);
+        }
+
+        if (!partialFlowGraph.zoneToNodes.ContainsKey(sourceZone)) partialFlowGraph.zoneToNodes[sourceZone] = new HashSet<FlowNode> { };
+        if (!partialFlowGraph.zoneToNodes.ContainsKey(goalZone)) partialFlowGraph.zoneToNodes[goalZone] = new HashSet<FlowNode> { };
+        HashSet<FlowNode> SourceZoneNodes = partialFlowGraph.zoneToNodes[sourceZone];
+        HashSet<FlowNode> TerminalZoneNodes = partialFlowGraph.zoneToNodes[goalZone];
+        foreach (FlowEdge edge in Edges) edge.Flow = 0;
+
+        foreach (FlowNode node in TerminalZoneNodes)
+        {
+            //Specify length to speed up initialization
+            float edgeLength = analysis.flowMaps[goalRegion.gateways.IndexOf(node.ChokePoint)][goalCoord.X, goalCoord.Y].distanceToGate;
+            FlowEdge edge = new FlowEdge(node, Terminal, edgeLength, float.MaxValue);
+            Edges.Add(edge);
+            _idToEdges.Add(edge.Id, edge);
+            (int, int) key = (Terminal.Id, node.Id);
+            (int, int) opposite = (node.Id, Terminal.Id);
+            (int, float) value = (edge.Id, edge.EdgeLength);
+            _nodesIdsToEdgeIdCost[key] = value;
+            _nodesIdsToEdgeIdCost[opposite] = value;
+            NodeToEdges[Terminal].Add(edge);
+            NodeToEdges[node].Add(edge);
+        }
+
+        foreach (FlowNode node in SourceZoneNodes)
+        {
+            //Specify length to speed up initialization
+            float edgeLength = analysis.flowMaps[sourceRegion.gateways.IndexOf(node.ChokePoint)][sourceCoord.X, sourceCoord.Y].distanceToGate;
+            FlowEdge edge = new FlowEdge(Source, node, edgeLength, float.MaxValue);
+            Edges.Add(edge);
+            _idToEdges.Add(edge.Id, edge);
+            (int, int) key = (Source.Id, node.Id);
+            (int, int) opposite = (node.Id, Source.Id);
+            (int, float) value = (edge.Id, edge.EdgeLength);
+            _nodesIdsToEdgeIdCost[key] = value;
+            _nodesIdsToEdgeIdCost[opposite] = value;
+            NodeToEdges[Source].Add(edge);
+            NodeToEdges[node].Add(edge);
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public FlowGraph(PartialFlowGraph partialFlowGraph, Vector2 source, Vector2 goal, int[,] regionalMap)
     {
         Coord sourceCoord = Coord.CoordFromPosition(source);
@@ -134,15 +211,32 @@ public class FlowGraph
 
         NodeToEdges[Source] = new HashSet<FlowEdge>();
         NodeToEdges[Terminal] = new HashSet<FlowEdge>();
-        HashSet<FlowNode> SourceZoneNodes = partialFlowGraph.zoneToNodes[sourceZone];
 
+        if (!partialFlowGraph.zoneToNodes.ContainsKey(sourceZone)) partialFlowGraph.zoneToNodes[sourceZone] = new HashSet<FlowNode> { };
+        if (!partialFlowGraph.zoneToNodes.ContainsKey(goalZone)) partialFlowGraph.zoneToNodes[goalZone] = new HashSet<FlowNode> { };
+        HashSet<FlowNode> SourceZoneNodes = partialFlowGraph.zoneToNodes[sourceZone];
         HashSet<FlowNode> TerminalZoneNodes = partialFlowGraph.zoneToNodes[goalZone];
+
+        if (goalZone == sourceZone)
+        {
+            FlowEdge directEdge = new FlowEdge(Source, Terminal, Vector2.Distance(goal, source), 1000000);
+            Edges.Add(directEdge);
+            _idToEdges.Add(directEdge.Id, directEdge);
+            (int, int) key = (Source.Id, Terminal.Id);
+            (int, int) opposite = (Terminal.Id, Source.Id);
+            (int, float) value = (directEdge.Id, directEdge.EdgeLength);
+            _nodesIdsToEdgeIdCost[key] = value;
+            _nodesIdsToEdgeIdCost[opposite] = value;
+            NodeToEdges[Terminal].Add(directEdge);
+            NodeToEdges[Source].Add(directEdge);
+        }
+
         foreach (FlowEdge edge in Edges) edge.Flow = 0;
 
         foreach (FlowNode node in TerminalZoneNodes)
         {
             //Specify length to speed up initialization
-            FlowEdge edge = new FlowEdge(Terminal, node, float.MaxValue);
+            FlowEdge edge = new FlowEdge(node, Terminal, float.MaxValue);
             Edges.Add(edge);
             _idToEdges.Add(edge.Id, edge);
             (int, int) key = (Terminal.Id, node.Id);

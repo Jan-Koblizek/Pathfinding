@@ -42,8 +42,9 @@ internal struct PlannerPath : IEquatable<PlannerPath>, IPath
 
     public readonly float Flow;
     public readonly float Cost;
+    public float Time { get { return Cost / SimulationSettings.instance.UnitSpeed; } }
 
-    float IPath.Cost => Cost;
+    float IPath.Time => Cost;
     float IPath.Flow => Flow;
 
     public NodeID this[int i] => ((IReadOnlyList<NodeID>)Path)[i];

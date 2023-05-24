@@ -35,7 +35,8 @@ public class WallsECS
             passabilityMap = map,
             mapWidth = mapWidth,
             mapHeight  = mapHeight,
-            obstacleRepulsionRays = obstacleRepulsionRays
+            obstacleRepulsionRays = obstacleRepulsionRays,
+            time = Time.time
         };
 
         wallRepulsionJobHandle = wallRepulsionJob.Schedule(unitPositions.Length, 64);
@@ -304,22 +305,25 @@ public class WallsECS
         public int mapWidth;
         [ReadOnly]
         public int mapHeight;
-
+        [ReadOnly]
+        public float time;
         [ReadOnly]
         public NativeArray<(float, float)> obstacleRepulsionRays;
         public void Execute(int index)
         {
-            forces[index] = GetWallRepulsionForce(unitPositions[index]);
+            forces[index] = GetWallRepulsionForce(unitPositions[index], index);
         }
 
-        private Vector2 GetWallRepulsionForce(Vector2 position)
+        private Vector2 GetWallRepulsionForce(Vector2 position, int index)
         {
             if (IsInWallsPoint(position))
             {
                 return Vector2.zero;
             }
+            
             Vector2 wallRepulsionForce = Vector2.zero;
-            Vector2 initDirection = Vector2.right;
+            Unity.Mathematics.Random random = new Unity.Mathematics.Random((uint)((index + 13) * (time + 7)));
+            Vector2 initDirection = (Vector2.right).Rotate(random.NextFloat()*90.0f);
 
             foreach (var (angle, length) in obstacleRepulsionRays)
             {

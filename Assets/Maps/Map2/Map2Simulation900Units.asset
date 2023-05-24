@@ -25,3 +25,14 @@ MonoBehaviour:
   - {x: 50, y: 250}
   - {x: 120, y: 250}
   - {x: 155, y: 206}
+  pathfindingEvaluationStartPositions:
+  - {x: 15, y: 15}
+  - {x: 240, y: 10}
+  - {x: 80, y: 140}
+  - {x: 10, y: 120}
+  - {x: 180, y: 110}
+  pathfindingEvaluationGoalPositions:
+  - {x: 242, y: 242}
+  - {x: 90, y: 250}
+  - {x: 130, y: 10}
+  - {x: 120, y: 250}

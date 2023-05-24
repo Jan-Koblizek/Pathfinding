@@ -4,6 +4,13 @@ using utils;
 
 public class Unit
 {
+    public List<Vector2> pathPositions = new List<Vector2>();
+    public List<(int gateID, (float ArrivalTime, float distanceFromStart, int StreamID, Vector2 ArrivalPosition))> gatePathMovement = new List<(int gateID, (float ArrivalTime, float distanceFromStart, int StreamID, Vector2 ArrivalPosition))>();
+    private float distanceFromStart = 0.0f;
+    private float timeElapsed = 0.0f;
+    private float deltaTime;
+    public const float pathPositionsUpdatePeriod = 1.0f;
+    public int ID;
     private Target target;
     float checkIfReachedTargetInterval = 0;
 
@@ -22,8 +29,24 @@ public class Unit
     private RegionalFlowGraphPathUsingSubPathsExecutor regionalFlowGraphPathUsingSubPathsExecutor;
     private FlowFieldSupremeCommander flowFieldSupremeCommander;
     private NearbyUnitsManager nearbyUnitsManager;
+    private RegionalDecomposition regionalDecomposition;
+    private int streamID = 0;
+    [HideInInspector]
+    public int repaths = 0;
+    [HideInInspector]
+    public int softRepaths = 0;
 
     public MovementMode movementMode;
+
+    public void SetRegionalDecomposition(RegionalDecomposition decomposition)
+    {
+        regionalDecomposition = decomposition;
+    }
+
+    public Unit(int ID)
+    {
+        this.ID = ID;
+    }
 
     public void Initialize(Vector2 pos)
     {
@@ -77,10 +100,6 @@ public class Unit
                 seek = flowField.getMovementDirection(position);
                 break;
             case MovementMode.PathFollowing:
-                if (pathExecutor != null) seek = pathExecutor.GetPathFollowingForce(deltaTime);
-                else seek = Vector2.zero;
-                break;
-            case MovementMode.PathFollowingLowerNumberOfPaths:
                 if (pathExecutor != null) seek = pathExecutor.GetPathFollowingForce(deltaTime);
                 else seek = Vector2.zero;
                 break;
@@ -200,6 +219,12 @@ public class Unit
         pathExecutor = new PathExecutor(this, ref path);
     }
 
+    public void MoveAlongThePath(List<Vector2> path, int streamID)
+    {
+        this.streamID = streamID;
+        pathExecutor = new PathExecutor(this, ref path);
+    }
+
     public void UseFlowField(FlowField flowField)
     {
         this.flowField = flowField;
@@ -228,6 +253,43 @@ public class Unit
     public void SetTarget(Target target)
     {
         this.target = target;
+    }
+
+    public void TryUpdatePathPositions(float timeChange)
+    {
+        deltaTime += timeChange;
+        if (deltaTime >= pathPositionsUpdatePeriod)
+        {
+            deltaTime -= pathPositionsUpdatePeriod;
+            if (pathPositions.Count > 0)
+            {
+                Vector2 previousPosition = pathPositions[pathPositions.Count-1];
+                Vector2 direction = (position - previousPosition).normalized;
+                float distance = Vector2.Distance(position,previousPosition);
+                if (GateRaycasting.GateRaycast(regionalDecomposition, previousPosition, direction, distance, out Vector2 hitPoint, out float distanceToGate, out int gateID))
+                {
+                    if (gatePathMovement.FindAll(x => x.gateID == gateID).Count == 0)
+                    {
+                        float fraction = distanceToGate / distance;
+                        int streamIDLocal = 0;
+                        if (movementMode == MovementMode.RegionalFlowGraph)
+                            streamIDLocal = regionalFlowGraphPathExecutor.pathIndex;
+                        else if (movementMode == MovementMode.RegionalFlowGraphPaths)
+                            streamIDLocal = regionalFlowGraphPathUsingSubPathsExecutor.pathIndex;
+                        else if (movementMode == MovementMode.PathFollowing)
+                            streamIDLocal = this.streamID;
+
+                        gatePathMovement.Add((gateID, 
+                            (timeElapsed + pathPositionsUpdatePeriod * fraction, 
+                            distanceFromStart + distanceToGate,
+                            streamIDLocal, hitPoint)));
+                    }
+                }
+                timeElapsed += pathPositionsUpdatePeriod;
+                distanceFromStart += distance;
+            }
+            pathPositions.Add(position);
+        }
     }
 
     private bool CheckIfReachedTarget(float deltaTime)

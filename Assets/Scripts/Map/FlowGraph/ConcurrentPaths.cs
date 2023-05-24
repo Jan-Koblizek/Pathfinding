@@ -165,22 +165,20 @@ internal class ConcurrentPaths
             }
 
 
-            var pathsToMutate = FindPathsForMutation(alternatingSubPaths[1], negativeFlow);
+            HashSet<PathID> pathsToMutate = FindPathsForMutation(alternatingSubPaths[1], negativeFlow);
 
             //randomly select a path that won't have full mutation but just partial
-            var notFullMutationPathId = UnityEngine.Random.Range(0, pathsToMutate.Count);
+            int notFullMutationPathId = UnityEngine.Random.Range(0, pathsToMutate.Count);
             int i = 0;
-            foreach (var pathID in pathsToMutate)
+            foreach (PathID pathID in pathsToMutate)
             {
                 float flow = PlannerPath.GetPathById(pathID).Flow;
+                
                 if (i++ == notFullMutationPathId)
                 {
-                    //Debug.Log($"Flow {flow}");
-                    //Debug.Log($"Total Flow: {GetTotalFlow(pathsToMutate)}");
-                    //Debug.Log($"Paths To Mutate {pathsToMutate.Count}");
                     flow = negativeFlow - (GetTotalFlow(pathsToMutate) - flow);
-                    //Debug.Log($"Changed flow {flow}");
                 }
+                
 
                 Mutate(alternatingSubPaths, pathID, flow, stack, flowGraph);
             }
@@ -490,7 +488,7 @@ internal class ConcurrentPaths
     /// <returns></returns>
     private HashSet<PathID> FindPathsForMutation(List<NodeID> negativePath, float negativeFlow)
     {
-        var pathsWithTheNegativeEdge = EdgeContainingPaths(negativePath);
+        IList<PathID> pathsWithTheNegativeEdge = EdgeContainingPaths(negativePath);
         List<HashSet<PathID>> pathsCombination = GetMinPathsCombination(negativeFlow, pathsWithTheNegativeEdge);
 
         if (pathsCombination.Count == 0)
@@ -538,6 +536,8 @@ internal class ConcurrentPaths
         float maxFlow = GetTotalFlow(pathsWithTheEdge);
         float minFlow = GetMinFlow(pathsWithTheEdge);
 
+        //Debug.Log($"Total Flow: {maxFlow}, Min Flow {minFlow}, Negative Flow {negativeFlow}");
+
         //has to use all of the paths
         if (negativeFlow > maxFlow - minFlow)
         {
@@ -555,7 +555,7 @@ internal class ConcurrentPaths
 
         //Hass diagram - like generator -> possible set of paths to mutate
         //start with non empty sets -- finishes with one to full set (min one path does not need to be selected)
-        for (int i = 1; i < pathsWithTheEdge.Count - 1; i++)
+        for (int i = 1; i <= pathsWithTheEdge.Count - 1; i++)
         {
             //the algorithm here goes from lower levels of Hass upwards,
             //meaning it is testing more and more combinations,
@@ -599,6 +599,7 @@ internal class ConcurrentPaths
 
             }
         }
+        Debug.Log(foundSets.Count);
         return foundSets;
     }
 
@@ -658,11 +659,11 @@ internal class ConcurrentPaths
         /// <summary>
         /// Represents time step in which was the initial arrival as well as the length of the path (cost of the path)
         /// </summary>
-        public float Cost { get; set; }
+        public float Time { get; set; }
         public float Flow { get; set; }
 
         /// <summary>
-        /// In time Cost how many units already finished journey
+        /// In time how many units already finished journey
         /// </summary>
         public readonly float InitialArrivals;
 
@@ -670,7 +671,7 @@ internal class ConcurrentPaths
         public VirtualPath(PathID pathID)
         {
             var p = PlannerPath.GetPathById(pathID);
-            Cost = p.Cost;
+            Time = p.Time;
             Flow = p.Flow;
             InitialArrivals = 0;
         }
@@ -679,18 +680,18 @@ internal class ConcurrentPaths
         {
             var p = PlannerPath.GetPathById(pathID);
 
-            var newlyFinished = vp.TransitOfPath(p.Cost);
+            var newlyFinished = vp.TransitOfPath(p.Time);
             var initFlow = vp.InitialArrivals + newlyFinished;
             var totalFlow = vp.Flow + p.Flow;
 
-            Cost = p.Cost;
+            Time = p.Time;
             Flow = totalFlow;
             InitialArrivals = initFlow;
         }
 
-        private float TransitOfPath(float step)
+        private float TransitOfPath(float time)
         {
-            var finishedTime = step - Cost;
+            var finishedTime = time - Time;
             if (finishedTime <= 0)
             {
                 return 0;
@@ -701,25 +702,25 @@ internal class ConcurrentPaths
 
 
         /// <summary>
-        /// Number of steps need to transport <code>flowVolume</code> through the virtual path
+        /// Time needed to transport <code>flowVolume</code> through the virtual path
         /// </summary>
         /// <param name="flowVolume">number of units to send</param>
-        /// <returns>Total number of steps to transport all units</returns>
+        /// <returns>Total time to transport all units</returns>
         internal float TimeToTransport(float flowVolume)
         {
             if (flowVolume < InitialArrivals)
             {
-                return Cost;
+                return Time;
             }
 
             var remainingVolume = flowVolume - InitialArrivals;
-            var result = remainingVolume / Flow + Cost;
+            var result = remainingVolume / Flow + Time;
 
             return result;
         }
     }
 
-    internal float GetTotalNumberOfSteps(float numberOfUnits)
+    internal float GetTotalTime(float numberOfUnits)
     {
         if (_atOnce == null || _atOnce.Count == 0)
         {
@@ -732,7 +733,7 @@ internal class ConcurrentPaths
         for (int i = 1; i < _atOnce.Count; i++)
         {
             var nextPath = new VirtualPath(_atOnce[i], virtualPath);
-            if (nextPath.Cost > virtualPath.TimeToTransport(numberOfUnits))
+            if (nextPath.Time > virtualPath.TimeToTransport(numberOfUnits))
             {
                 //done
                 break;
@@ -743,8 +744,8 @@ internal class ConcurrentPaths
             }
         }
 
-        var totalSteps = virtualPath.TimeToTransport(numberOfUnits);
-        return totalSteps;
+        var timeToTransport = virtualPath.TimeToTransport(numberOfUnits);
+        return timeToTransport;
     }
 
 
@@ -753,14 +754,14 @@ internal class ConcurrentPaths
     {
         var path = PlannerPath.GetPathById(pathID);
 
-        var finished = time - path.Cost;
+        var finished = time - path.Time;
         var timeFinished = finished;
         if (timeFinished <= 0)
         {
             return 0;
         }
 
-        var result = timeFinished * path.Flow;
+        var result = timeFinished * Mathf.Abs(path.Flow);
         return (int)Math.Floor(result);
     }
 
@@ -768,7 +769,7 @@ internal class ConcurrentPaths
     /// <summary>
     /// Computes the number of unit that are able to go trough all of the paths in the given number of steps
     /// </summary>
-    /// <param name="step">Steps count</param>
+    /// <param name="time">time from the start</param>
     /// <param name="assignment">How many units used which path</param>
     /// <returns>Total number of units in all paths</returns>
     internal int TransitOfPaths(float time, out List<int> assignment)

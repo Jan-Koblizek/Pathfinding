@@ -54,11 +54,23 @@ public class RegionalFlowGraphPath
                         else if (onCommonPath)
                         {
                             otherPosition++;
-                            if (gatewayOrders[i][k] != gatewayOrders[j][otherPosition])
+                            try
                             {
-                                Utilities.AddToHashsetDictionary(lastCommonGates, gatewayOrders[i][k - 1], i);
-                                Utilities.AddToHashsetDictionary(lastCommonGates, gatewayOrders[i][k - 1], j);
-                                onCommonPath = false;
+                                if (gatewayOrders[i][k] != gatewayOrders[j][otherPosition])
+                                {
+                                    Utilities.AddToHashsetDictionary(lastCommonGates, gatewayOrders[i][k - 1], i);
+                                    Utilities.AddToHashsetDictionary(lastCommonGates, gatewayOrders[i][k - 1], j);
+                                    onCommonPath = false;
+                                }
+                            }
+                            catch (System.Exception e)
+                            {
+                                Debug.Log(gatewayOrders.Count);
+                                Debug.Log(gatewayOrders[i].Count);
+                                Debug.Log(gatewayOrders[j].Count);
+                                Debug.Log(k);
+                                Debug.Log(otherPosition);
+                                throw e;
                             }
                         }
                         k++;

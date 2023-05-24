@@ -4,6 +4,6 @@ using UnityEngine;
 
 internal interface IPath
 {
-    float Cost { get; }
+    float Time { get; }
     float Flow { get; }
 }

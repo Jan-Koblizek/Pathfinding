@@ -1,8 +1,9 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class RegionGateway
+public class RegionGateway : IEquatable<RegionGateway>
 {
     public int ID;
     public Coord start;
@@ -81,5 +82,10 @@ public class RegionGateway
     private bool coordsInsideWall(int x, int y, int mapWidth, int mapHeight, ref bool[,] obstructionMap)
     {
         return !(x >= 0 && x < mapWidth && y >= 0 && y < mapHeight && obstructionMap[x, y]);
+    }
+
+    public bool Equals(RegionGateway other)
+    {
+        return other.ID == ID;
     }
 }

@@ -278,7 +278,7 @@ public class FlowPaths
         var altSteps = new List<float>();
         foreach (var alternative in alternatives)
         {
-            var steps = alternative.GetTotalNumberOfSteps(numberOfUnits);
+            var steps = alternative.GetTotalTime(numberOfUnits);
             altSteps.Add(steps);
         }
 

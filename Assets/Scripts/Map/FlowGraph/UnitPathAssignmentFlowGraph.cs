@@ -116,7 +116,7 @@ public class UnitPathAssignmentFlowGraph
             for (var index = 0; index < levels.Count; index++)
             {
                 var level = levels[index];
-                var gateQueue = AddUnitsToQueue(units, level.gateLocation);
+                PriorityQueue<float, Unit> gateQueue = AddUnitsToQueue(units, level.gateLocation);
 
                 var h = new HashSet<Unit>();
                 if (level.TEMPunits == null)
@@ -124,7 +124,7 @@ public class UnitPathAssignmentFlowGraph
                     level.TEMPunits = new HashSet<Unit>();
                 }
                 var remainingUnitCount = level.unitCount - level.assignedUnits.Count;
-
+                //Debug.Log($"{remainingUnitCount}, {level.unitCount}, {level.assignedUnits.Count}, {gateQueue.Count()}, {units.Count()}");
 
                 for (int i = 0; i < remainingUnitCount; i++)
                 {
@@ -246,7 +246,7 @@ public class UnitPathAssignmentFlowGraph
         {
             foreach (var unit in assignedUnits)
             {
-                unit.MoveAlongThePath(gridPaths[i]);
+                unit.MoveAlongThePath(gridPaths[i], i);
                 unit.SetTarget(unitPathAssignment.target);
                 unit.movementMode = MovementMode.PathFollowing;
                 /*
@@ -317,6 +317,7 @@ public class UnitPathAssignmentFlowGraph
             gridPaths.Add(possiblePath._centerList);
             gridPaths[gridPaths.Count - 1].Add(possiblePath.target.Center);
         }
+
 
         //lets fill the path between gates for the units, with the aStar algorithm
         for (var index = 0; index < gridPaths.Count; index++)

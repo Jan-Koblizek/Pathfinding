@@ -47,7 +47,7 @@ public class Map : MonoBehaviour
             for (int j = 0; j < width; j += 1)
             {
                 Color pixel1 = obstructionMap.GetPixel(j, i);
-                if (pixel1.r > 0.5)
+                if (pixel1.r > 0.5 || pixel1.g > 0.5 || pixel1.b > 0.5)
                 {
                     passabilityMap[j, i] = true;
                     groundTexture.SetPixel(j, i, Color.white);

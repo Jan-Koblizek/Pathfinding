@@ -5,7 +5,7 @@ using UnityEngine;
 
 public class RegionalFlowGraphPathExecutor
 {
-    int pathIndex;
+    public int pathIndex { get; private set; }
     public Unit unit;
     public RegionalFlowGraphPath regionalPath;
 
@@ -126,6 +126,7 @@ public class RegionalFlowGraphPathExecutor
                 if (regionalPath.regionalPaths[i].gatewayDirections.ContainsKey(currentRegion - RegionalDecomposition.GatewayIndexOffset) ||
                     regionalPath.regionalPaths[i].regionDirections.ContainsKey(currentRegion))
                 {
+                    unit.softRepaths++;
                     pathIndex = i;
                     break;
                 }
