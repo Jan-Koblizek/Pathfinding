@@ -48,5 +48,12 @@ namespace utils
         {
             return (float)Mathf.Atan2(value.x, 0f - value.y);
         }
+
+        public static float OctileDistance(this Vector2 v1, Vector2 v2)
+        {
+            int dx = Mathf.CeilToInt(Mathf.Abs(v1.x - v2.x));
+            int dy = Mathf.CeilToInt(Mathf.Abs(v1.y - v2.y));
+            return Mathf.Max(dx, dy) + Mathf.Min(dx, dy) * 0.415f;
+        }
     }
 }

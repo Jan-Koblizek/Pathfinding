@@ -13,7 +13,7 @@ public class Simulator : MonoBehaviour
     public int internalMovementCycles;
     public int outerMovementCycles;
     public bool drawUnits = true;
-    public SimulationSetup simulationSpecification;
+    public List<SimulationSetup> simulationSpecifications;
     public static Simulator Instance { get; private set; }
     public UnitMovementManager unitMovementManager;
     public GameObject unitPrefab;
@@ -47,6 +47,8 @@ public class Simulator : MonoBehaviour
     [HideInInspector]
     public PartialFlowGraph partialFlowGraph;
     private bool halfFinished = false;
+    private int simulationID;
+    private bool failed = false;
 
     [HideInInspector]
     public ExperimentResults experimentResults;
@@ -54,13 +56,16 @@ public class Simulator : MonoBehaviour
     private void Start()
     {
         Instance = this;
-        Map.instance.Initialize(simulationSpecification.mapTexture);
+        if (!automaticSimulation)
+        {
+            simulationID = 0;
+            Map.instance.Initialize(simulationSpecifications[0].mapTexture);
+            InitializeUnits();
 
-        InitializeUnits();
-
-        target = Target.CreateTarget(simulationSpecification.GetTargetPosition(), simulationSpecification.targetSize, targetPrefab);
-        warmUpStartPositions = simulationSpecification.GetWarmUpStartPositions();
-        warmUpGoalPositions = simulationSpecification.GetWarmUpGoalPositions();
+            target = Target.CreateTarget(simulationSpecifications[0].GetTargetPosition(), simulationSpecifications[0].targetSize, targetPrefab);
+            warmUpStartPositions = simulationSpecifications[0].GetWarmUpStartPositions();
+            warmUpGoalPositions = simulationSpecifications[0].GetWarmUpGoalPositions();
+        }
         if (automaticSimulation)
         {
             StartCoroutine(SimulateAutomatic());
@@ -69,42 +74,36 @@ public class Simulator : MonoBehaviour
 
     IEnumerator SimulateAutomatic()
     {
+        for (int i = 0; i < simulationSpecifications.Count; i++)
+        {
+            simulationID = i;
+            Map.instance.Initialize(simulationSpecifications[i].mapTexture);
+            if (target != null) Destroy(target.gameObject);
+            target = Target.CreateTarget(simulationSpecifications[i].GetTargetPosition(), simulationSpecifications[i].targetSize, targetPrefab);
+            warmUpStartPositions = simulationSpecifications[i].GetWarmUpStartPositions();
+            warmUpGoalPositions = simulationSpecifications[i].GetWarmUpGoalPositions();
+            yield return StartCoroutine(SimulateAutomaticOne());
+        }
+        Debug.Log("Quitting");
+        Application.Quit();
+    }
+
+    IEnumerator SimulateAutomaticOne()
+    {
+        decomposition = null;
         experimentResults = new ExperimentResults();
         foreach (MovementMode movementMode in movementModesTestedAutomatic)
         {
+            InitializeUnits(true);
             Debug.Log($"Pathfinding method: {movementMode} --------------------------------------------------------------");
             this.movementMode = movementMode;
             yield return new WaitForSeconds(0.5f);
             StartPreparation();
             yield return null;
             yield return new WaitForSeconds(0.5f);
-            //StartWarmUp();
+            StartWarmUp();
             yield return null;
             yield return new WaitForSeconds(0.5f);
-
-            /*
-            int pathfindingLoopCount = 0;
-            System.Diagnostics.Process currentProcess = System.Diagnostics.Process.GetCurrentProcess();
-            TimeSpan start = currentProcess.TotalProcessorTime;
-            double timeElapsed = 0;
-            while (timeElapsed < 5000) {
-                List<(Vector2 start, Vector2 goal)> pathfindingRequests = new List<(Vector2 start, Vector2 goal)>();
-                foreach (Vector2 startPosition in simulationSpecification.pathfindingEvaluationStartPositions)
-                {
-                    int endPositionIndex = UnityEngine.Random.Range(0, simulationSpecification.pathfindingEvaluationGoalPositions.Count);
-                    Vector2 endPosition = simulationSpecification.pathfindingEvaluationGoalPositions[endPositionIndex];
-                    pathfindingRequests.Add((startPosition, endPosition));
-                }
-                foreach ((Vector2 startPosition, Vector2 goalPosition) in pathfindingRequests)
-                {
-                    unitMovementManager.StartWarmUp(movementMode, startPosition, goalPosition);
-                }
-                pathfindingLoopCount++;
-                timeElapsed = (currentProcess.TotalProcessorTime - start).TotalMilliseconds;
-            }
-            TimeSpan end = currentProcess.TotalProcessorTime;
-            Debug.Log($"Pathfinding Took: {(end - start).TotalMilliseconds / (pathfindingLoopCount * simulationSpecification.pathfindingEvaluationStartPositions.Count)} ms");
-            */
 
             yield return null;
             yield return new WaitForSeconds(0.5f);
@@ -112,16 +111,21 @@ public class Simulator : MonoBehaviour
             int i = 0;
             while (i < numberOfSimulations)
             {
+                failed = false;
+                //Debug.Log(unitMovementManager.units.Count);
                 experimentResults.runNumber = i;
-                experimentResults.experimentName = simulationSpecification.name;
+                experimentResults.experimentName = simulationSpecifications[simulationID].name;
                 experimentResults.movementModeName = movementMode.ToString();
-
+                Debug.Log("Before Start Simulation");
                 StartSimulation();
                 yield return null;
-                while (!simulationFinished) yield return null;
-                if (writeResults) experimentResults.WriteExperimentResultsToFile($"Results/{simulationSpecification.name}/{movementMode}-{i}.txt");
+                while (!simulationFinished) yield return new WaitForSeconds(0.2f);
+                if (writeResults) experimentResults.WriteExperimentResultsToFile($"Results/{simulationSpecifications[simulationID].name}/{movementMode}-{i}.txt", failed);
                 yield return new WaitForSeconds(1.0f);
-                InitializeUnits();
+                if (i != numberOfSimulations - 1)
+                {
+                    InitializeUnits();
+                }
                 i++;
                 yield return new WaitForSeconds(1.0f);
             }
@@ -129,44 +133,63 @@ public class Simulator : MonoBehaviour
         }
         if (writeResults)
         {
-            experimentResults.WriteGateAnalysisToFile($"Results/{simulationSpecification.name}/GateAnalysis.txt");
+            experimentResults.WriteGateAnalysisToFile($"Results/{simulationSpecifications[simulationID].name}/GateAnalysis.txt");
             experimentResults.decomposition = decomposition.regionMap;
-            experimentResults.WriteDecompositionToFile($"Results/{simulationSpecification.name}/Decomposition.txt");
+            experimentResults.WriteDecompositionToFile($"Results/{simulationSpecifications[simulationID].name}/Decomposition.txt");
         }
-        Application.Quit();
     }
 
-    private void InitializeUnits()
+    private void InitializeUnits(bool forceNew = false)
     {
+        Debug.Log("Initialize Units");
         List<Unit> units = new List<Unit>();
         List<UnitVisualization> unitVisualizations = new List<UnitVisualization>();
-        for (int y = 0; y < simulationSpecification.unitStartMap.height; y++)
+        for (int y = 0; y < simulationSpecifications[simulationID].unitStartMap.height; y++)
         {
-            for (int x = 0; x < simulationSpecification.unitStartMap.width; x++)
+            for (int x = 0; x < simulationSpecifications[simulationID].unitStartMap.width; x++)
             {
-                Color pixel1 = simulationSpecification.unitStartMap.GetPixel(x, y);
+                Color pixel1 = simulationSpecifications[simulationID].unitStartMap.GetPixel(x, y);
                 if (pixel1.r > 0.5)
                 {
                     Unit unit = new Unit(units.Count);
-                    unit.Initialize(new Vector2(x, y));
+                    unit.Initialize(new Vector2(x + 0.5f, y + 0.5f));
                     units.Add(unit);
                     if (drawUnits)
                     {
-                        GameObject go = Instantiate(unitPrefab, new Vector3(x, y, 0.0f), Quaternion.identity, unitsParent.transform);
+                        GameObject go = Instantiate(unitPrefab, new Vector3(x + 0.5f, y + 0.5f, 0.0f), Quaternion.identity, unitsParent.transform);
                         UnitVisualization unitVisualization = go.GetComponent<UnitVisualization>();
                         unitVisualizations.Add(unitVisualization);
                     }
                 }
             }
         }
+        //Debug.Log(units.Count);
         if (drawUnits)
-            unitMovementManager.SetUnits(units, unitVisualizations);
+            unitMovementManager.SetUnits(units, unitVisualizations, forceNew);
         else
-            unitMovementManager.SetUnits(units);
+            unitMovementManager.SetUnits(units, forceNew);
     }
 
     private void Update()
     {
+        if (simulationTime > 10000 && !simulationFinished)
+        {
+            simulationFinished = true;
+            failed = true;
+            for (int i = unitMovementManager.units.Count - 1; i >= 0; i--)
+            {
+                unitMovementManager.RemoveUnit(unitMovementManager.units[i]);
+                unitMovementManager.units[i].currentCoord.UnitsAtTile().Remove(unitMovementManager.units[i]);
+                foreach (Unit deletedUnit in unitMovementManager.unitsToDelete)
+                {
+                    unitMovementManager.units.Remove(deletedUnit);
+                }
+                if (unitMovementManager.unitsToDelete.Count > 0 && unitMovementManager.unitsECS != null)
+                {
+                    unitMovementManager.unitsECS.UnitsRemoved(unitMovementManager.units);
+                }
+            }
+        }
         if (simulationStarted && !simulationFinished)
         {
             for (int i = 0; i < outerMovementCycles; i++)
@@ -176,7 +199,7 @@ public class Simulator : MonoBehaviour
                 simulationTime += deltaTime * internalMovementCycles;
             }
         }
-        executionComputationTime += Time.deltaTime;
+        executionComputationTime += Time.unscaledDeltaTime;
     }
     /*
     private void OneSecondUpdate()
@@ -194,6 +217,7 @@ public class Simulator : MonoBehaviour
     {
         unitsReachedTarget++;
         experimentResults.unitPathsData.unitPaths[unit.ID] = unit.pathPositions;
+        experimentResults.unitPathsData.finishTimes[unit.ID] = simulationTime;
         experimentResults.unitPathsData.repaths += unit.repaths;
         experimentResults.unitPathsData.softRepaths += unit.softRepaths;
         experimentResults.gatesData.unitGatePaths[unit.ID] = unit.gatePathMovement;
@@ -207,7 +231,7 @@ public class Simulator : MonoBehaviour
             experimentResults.finishedTime = simulationTime;
             Debug.Log($"Simulation Finished: {simulationTime}s, Execution Time: {executionComputationTime}");
             simulationFinished = true;
-            experimentResults.unitPathsData.ComputeResults();
+            experimentResults.unitPathsData.ComputeResults(simulationID);
             experimentResults.gatesData.GatesDataFromUnitPaths();
         }
         unitMovementManager.RemoveUnit(unit);
@@ -217,8 +241,10 @@ public class Simulator : MonoBehaviour
     {
         for (int i = 0; i < warmUpStartPositions.Count; i++)
         {
-            for (int j = 0; j < warmUpGoalPositions.Count; j++)
+            for (int j = 1; j < warmUpGoalPositions.Count; j++)
             {
+                //int random = UnityEngine.Random.Range(0, warmUpGoalPositions.Count);
+                //Debug.Log($"Start Position {warmUpStartPositions[i]}, Target Position {warmUpGoalPositions[j]}");
                 unitMovementManager.StartWarmUp(movementMode, warmUpStartPositions[i], warmUpGoalPositions[j]);
             }
         }
@@ -263,10 +289,13 @@ public class Simulator : MonoBehaviour
             case MovementMode.RegionalFlowGraph:
                 waterDecomposition = new WaterDecomposition();
                 decomposition = waterDecomposition.Decompose(Map.instance.passabilityMap, -1);
+                experimentResults.decomposition = decomposition.regionMap;
+                experimentResults.WriteDecompositionToFile($"Results/{simulationSpecifications[simulationID].name}/Decomposition.txt");
                 List<(Vector2 flowDirection, float distanceToGate)[,]> flowMaps2 = MapRegionPathfinding.CreateFlowMaps(decomposition);
                 Dictionary<RegionGateway, Dictionary<RegionGateway, float>> distances2 = MapRegionPathfinding.DistancesBetweenGates(decomposition);
                 regionalPathfinding = new RegionalPathfindingAnalysis(decomposition, flowMaps2, distances2);
                 partialFlowGraph = PartialFlowGraph.PartialFlowGraphFromDecomposition(decomposition, distances2);
+                //partialFlowGraph = PartialFlowGraph.PartialFlowGraphFromDecomposition(decomposition);
                 break;
             case MovementMode.RegionalFlowGraphPaths:
                 waterDecomposition = new WaterDecomposition();
@@ -282,9 +311,12 @@ public class Simulator : MonoBehaviour
         stopwatch.Stop();
         Debug.Log($"Preparation time: {stopwatch.Elapsed.TotalMilliseconds} ms");
         experimentResults.preparationTime = stopwatch.Elapsed.TotalMilliseconds;
-        waterDecomposition = new WaterDecomposition();
-        decomposition = waterDecomposition.Decompose(Map.instance.passabilityMap, -1);
-        //Debug.Log("After decomposition");
+
+        if (decomposition == null)
+        {
+            waterDecomposition = new WaterDecomposition();
+            decomposition = waterDecomposition.Decompose(Map.instance.passabilityMap, -1);
+        }
     }
 
     public void DecomposeMap()
@@ -308,14 +340,30 @@ public class Simulator : MonoBehaviour
             {
                 if (decomposition.regionMap[x, y] != -1)
                 {
+                    
                     if (decomposition.IsGate(decomposition.regionMap[x, y]))
                     {
                         Map.instance.groundTexture.SetPixel(x, y, colors[colors.Count - 1]);
+                    }
+                    else if (decomposition.regionMap[x, y] >= 1000)
+                    {
+                        Map.instance.groundTexture.SetPixel(x, y, Color.green);
                     }
                     else
                     {
                         Map.instance.groundTexture.SetPixel(x, y, colors[decomposition.regionMap[x, y]]);
                     }
+                    
+                    /*
+                    if (decomposition.IsGate(decomposition.regionMap[x, y]))
+                    {
+                        Map.instance.groundTexture.SetPixel(x, y, colors[decomposition.regionMap[x, y] - RegionalDecomposition.GatewayIndexOffset]);
+                    }
+                    else
+                    {
+                        Map.instance.groundTexture.SetPixel(x, y, Color.white);
+                    }
+                    */
                 }
             }
         }

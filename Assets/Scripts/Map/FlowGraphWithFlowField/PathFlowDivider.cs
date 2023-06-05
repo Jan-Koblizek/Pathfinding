@@ -15,7 +15,7 @@ public class PathFlowDivider
 
     public PathFlowDivider(RegionGateway gateway, List<RegionGateway> goalGates, List<int> pathIds, List<float> pathFlows, List<int> pathUnitCounts)
     {
-        //Debug.Log($"Gateway: {gateway.GetCentralPosition()}, Path IDs Count {pathIds.Count}");
+        //Debug.Log($"Gateway: {gateway.GetCentralPosition()}, Gateway ID {gateway.ID}, Path IDs Count {pathIds.Count}");
         this.gateway = gateway;
         paths = new List<DividerPathInfo>();
         for (int i = 0; i < goalGates.Count; i++)

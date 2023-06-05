@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Unity.VisualScripting;
 using UnityEngine;
 
@@ -18,29 +19,43 @@ public static class Pathfinding
         left = coord.X - 1 >= 0;
         right = coord.X + 1 < width;
         upLeft = coord.Y + 1 < height && coord.X - 1 >= 0;
-        upRight = coord.Y + 1 < height && coord.X + 1 <= width;
+        upRight = coord.Y + 1 < height && coord.X + 1 < width;
         downLeft = coord.Y - 1 >= 0 && coord.X - 1 >= 0;
-        downRight = coord.Y - 1 >= 0 && coord.X + 1 <= width;
+        downRight = coord.Y - 1 >= 0 && coord.X + 1 < width;
+
+        bool upNull, downNull, leftNull, rightNull, upLeftNull, upRightNull, downLeftNull, downRightNull;
+        upNull = up && pathfindingGrid[coord.X, coord.Y + 1] == null;
+        downNull = down && pathfindingGrid[coord.X, coord.Y - 1] == null;
+        leftNull = left && pathfindingGrid[coord.X - 1, coord.Y] == null;
+        rightNull = right && pathfindingGrid[coord.X + 1, coord.Y] == null;
+        upLeftNull = upLeft && pathfindingGrid[coord.X - 1, coord.Y + 1] == null;
+        upRightNull = upRight && pathfindingGrid[coord.X + 1, coord.Y + 1] == null;
+        downLeftNull = downLeft && pathfindingGrid[coord.X - 1, coord.Y - 1] == null;
+        downRightNull = downRight && pathfindingGrid[coord.X + 1, coord.Y - 1] == null;
 
         List<NeighborWithDistance> neighbors = new();
         if (left)
         {
             Coord neighbor = new(coord.X - 1, coord.Y);
+            if (leftNull) pathfindingGrid[coord.X - 1, coord.Y] = new PathfindingCell(float.MaxValue, false, null);
             neighbors.Add(new(neighbor, 1.0f));
         }
         if (right)
         {
             Coord neighbor = new(coord.X + 1, coord.Y);
+            if (rightNull) pathfindingGrid[coord.X + 1, coord.Y] = new PathfindingCell(float.MaxValue, false, null);
             neighbors.Add(new(neighbor, 1.0f));
         }
         if (up)
         {
             Coord neighbor = new(coord.X, coord.Y + 1);
+            if (upNull) pathfindingGrid[coord.X, coord.Y + 1] = new PathfindingCell(float.MaxValue, false, null);
             neighbors.Add(new(neighbor, 1.0f));
         }
         if (down)
         {
             Coord neighbor = new(coord.X, coord.Y - 1);
+            if (downNull) pathfindingGrid[coord.X, coord.Y - 1] = new PathfindingCell(float.MaxValue, false, null);
             neighbors.Add(new(neighbor, 1.0f));
         }
 
@@ -49,21 +64,25 @@ public static class Pathfinding
         if (upLeft && left && up)
         {
             Coord neighbor = new(coord.X - 1, coord.Y + 1);
+            if (upLeftNull) pathfindingGrid[coord.X - 1, coord.Y + 1] = new PathfindingCell(float.MaxValue, false, null);
             neighbors.Add(new(neighbor, 1.415f));
         }
         if (upRight && right && up)
         {
             Coord neighbor = new(coord.X + 1, coord.Y + 1);
+            if (upRightNull) pathfindingGrid[coord.X + 1, coord.Y + 1] = new PathfindingCell(float.MaxValue, false, null);
             neighbors.Add(new(neighbor, 1.415f));
         }
         if (downLeft && left && down)
         {
             Coord neighbor = new(coord.X - 1, coord.Y - 1);
+            if (downLeftNull) pathfindingGrid[coord.X - 1, coord.Y - 1] = new PathfindingCell(float.MaxValue, false, null);
             neighbors.Add(new(neighbor, 1.415f));
         }
         if (downRight && right && down)
         {
             Coord neighbor = new(coord.X + 1, coord.Y - 1);
+            if (downRightNull) pathfindingGrid[coord.X + 1, coord.Y - 1] = new PathfindingCell(float.MaxValue, false, null);
             neighbors.Add(new(neighbor, 1.415f));
         }
 
@@ -373,7 +392,7 @@ public static class Pathfinding
         }
     }
 
-    public static Stack<Vector2> ConstructPathAStar(List<Coord> startRegion, List<Coord> goalRegion, System.Func<Coord, Coord, float> heuristic, float nearObstaclePenalty, ref int[,] regionMap, int region)
+    public static Stack<Vector2> ConstructPathAStar(List<Coord> startRegion, List<Coord> goalRegion, System.Func<Coord, Coord, float> heuristic, float nearObstaclePenalty, ref int[,] regionMap, HashSet<int> region, bool allowAllRegions = false)
     {
         Coord goal = null;
         int width = Map.instance.passabilityMap.GetLength(0);
@@ -403,7 +422,9 @@ public static class Pathfinding
             pathfindingGrid[coord.X, coord.Y] = new PathfindingCell(0.0f, false, new Coord(-1, -1));
             queueAStar.Enqueue(heuristic(coord, heuristicGoal), coord);
         }
+
         bool finished = false;
+        int count = 0;
         while (!finished && queueAStar.Count() != 0)
         {
             ItemWithPriority<float, Coord> processed = queueAStar.Dequeue();
@@ -418,11 +439,21 @@ public static class Pathfinding
                     finished = true;
                     break;
                 }
-                List<NeighborWithDistance> neighbors = GetNeighborsAStar(processed.item, out bool someNeighborObstructed);
+                bool someNeighborObstructed = false;
+                List<NeighborWithDistance> neighbors;
+                if (Map.instance.passabilityMap[processed.item.X, processed.item.Y]) 
+                {
+                    neighbors = GetNeighborsAStar(processed.item, out someNeighborObstructed);
+                }
+                else
+                {
+                    neighbors = GetNeighborsAStarNoBlocking(processed.item);
+                }
                 float currentDistance = pathfindingGrid[processed.item.X, processed.item.Y].distance;
                 foreach (NeighborWithDistance neighbor in neighbors)
                 {
-                    if (regionMap[neighbor.coord.X, neighbor.coord.Y] == region)
+                    int neighborRegion = regionMap[neighbor.coord.X, neighbor.coord.Y];
+                    if (allowAllRegions || (region.Contains(neighborRegion) || goalRegion.Contains(neighbor.coord) || startRegion.Contains(neighbor.coord)))
                     {
                         float storedNeighborDistance = pathfindingGrid[neighbor.coord.X, neighbor.coord.Y].distance;
                         float neighborHeuristic = heuristic(neighbor.coord, heuristicGoal);
@@ -431,6 +462,7 @@ public static class Pathfinding
                             pathfindingGrid[neighbor.coord.X, neighbor.coord.Y].predecessor = processed.item;
                             pathfindingGrid[neighbor.coord.X, neighbor.coord.Y].distance = currentDistance + (someNeighborObstructed ? 1.0f + nearObstaclePenalty : 1.0f) * neighbor.distance;
                             queueAStar.Enqueue(neighborHeuristic + currentDistance + neighbor.distance, neighbor.coord);
+                            count++;
                         }
                     }
                 }
@@ -455,7 +487,8 @@ public static class Pathfinding
         }
         else
         {
-            Debug.Log("No path available");
+            //Debug.Log(startRegion[0].X + " " + startRegion[0].Y);
+            //Debug.Log($"No path available {count}");
             return null;
         }
     }
@@ -608,7 +641,7 @@ public static class Pathfinding
                         if (distanceField[neighbor.coord.X, neighbor.coord.Y] != null)
                         {
                             float newDistace = origDistance - (origDistance - distanceField[neighbor.coord.X, neighbor.coord.Y].distance) / neighbor.distance;
-                            direction += new Vector2(neighbor.coord.X - x, neighbor.coord.Y - y) * Mathf.Clamp((origDistance - newDistace), -4, 4);
+                            direction += new Vector2(neighbor.coord.X - x, neighbor.coord.Y - y) * Mathf.Clamp((origDistance - newDistace), -1.5f, 1.5f);
                             modified = true;
                         }
                     }
@@ -635,14 +668,19 @@ public static class Pathfinding
     /// <returns></returns>
     public static List<int> FlowGraphPath(FlowGraph flowGraph, List<int> origin, List<int> goal)
     {
-        System.Diagnostics.Stopwatch stopwatch = new System.Diagnostics.Stopwatch();
-        stopwatch.Start();
         FlowGraphInitializeStructuresForSearch(origin, goal, ref flowGraph,
             out PriorityQueue<float, int?> openNodes,
             out Dictionary<int?, AStarSearchNodeFlowGraph> visitedNodes,
             out HashSet<int> goals);
-        stopwatch.Stop();
         bool firstTimeAssert = true;
+        /*
+        IEnumerable<int> neighborsGoal = flowGraph.GetNeighbors(goal[0]);
+        foreach (int goalNeighbor in neighborsGoal) Debug.Log(goalNeighbor);
+        IEnumerable<int> neighbors2 = flowGraph.GetNeighbors(neighborsGoal.ToList()[0]);
+        foreach (int n2 in neighbors2) Debug.Log(n2);
+        IEnumerable<int> neighbors3 = flowGraph.GetNeighbors(neighbors2.ToList()[0]);
+        foreach (int n3 in neighbors3) Debug.Log(n3);
+        */
         while (openNodes.Count() > 0)
         {
             ItemWithPriority<float, int?> currentNode = openNodes.Dequeue();
@@ -651,13 +689,22 @@ public static class Pathfinding
 
             if (goals.Contains((int)currentNode.item))
             {
+                //Debug.Log(currentData.DistanceFromStart);
                 //for a big number of goals it might be good to create a bounding box of all goals and pre-test that
                 return FlowGraphGetPathFromBackwardsRun(visitedNodes, currentNode.item, origin);
             }
 
-            foreach (int neighbor in flowGraph.GetNeighbors((int)currentNode.item))
+            IEnumerable<int> neighbors = flowGraph.GetNeighbors((int)currentNode.item);
+            foreach (int neighbor in neighbors)
             {
+                AStarSearchNodeFlowGraph currentSearchNode = visitedNodes[currentNode.item];
+                if (currentSearchNode.Predecessor != null && (currentSearchNode.Predecessor == neighbor || flowGraph.GetNeighbors((int)currentSearchNode.Predecessor).Contains(neighbor)))
+                {
+                    continue;
+                }
+
                 // The distance from start to a neighbor.
+                //Debug.Log(flowGraph.DistanceBetweenNeighbors((int)currentNode.item, neighbor));
                 float distanceToNeighbor = currentData.DistanceFromStart + flowGraph.DistanceBetweenNeighbors((int)currentNode.item, neighbor);
 
                 //known node (open or closed)
@@ -694,6 +741,8 @@ public static class Pathfinding
                         DistanceFromStart = distanceToNeighbor,
                         TotalGoalDistance = distanceToNeighbor + flowGraph.DistanceToGoal(neighbor, goal)
                     };
+                    //Debug.Log($"Predecessor {n.Predecessor}, Distance From Start {n.DistanceFromStart}, Neighbor ID {neighbor}");
+                    //Debug.Log($"Goal {goal[0]}");
 
                     visitedNodes.Add(neighbor, n);
                     openNodes.Enqueue(n.TotalGoalDistance, neighbor);
@@ -763,6 +812,7 @@ public static class Pathfinding
 
         while (!visitedNodes[currentNode].Predecessor.Equals(null))
         {
+            //Debug.Log($"{currentNode}, {visitedNodes[currentNode].DistanceFromStart}");
             path.Add((int)currentNode);
             currentNode = visitedNodes[currentNode].Predecessor;
 
@@ -793,7 +843,7 @@ public static class Pathfinding
                 return shortList;
             }
         }
-
+        //Debug.Log($"{currentNode}, {visitedNodes[currentNode].DistanceFromStart}");
         path.Add((int)currentNode);
         path.Reverse();
         return path;

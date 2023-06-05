@@ -18,16 +18,17 @@ public class RegionalFlowGraphPlanning
             {
                 break;
             }
+            //Debug.Log($"Path Length: {shortestPath.Count}");
             //saturate the path in flow graph
             flowPaths.AddPath(flowGraph, shortestPath);
         }
-
-        List<ConcurrentPaths> concurrentPaths = flowPaths.Finish();
+        List<ConcurrentPaths> concurrentPaths = flowPaths.Finish(flowGraph);
+        //Debug.Log(concurrentPaths.Count);
 
         distribution = FlowPaths.AssignUnitCountsToConcurrentPathsRegional(concurrentPaths, units.Count, flowGraph);
-        RegionalFlowGraphPath path = UnitPathAssignmentRegionalFlowGraph.CreateRegionalFlowGraphPath(distribution, units, true);
+        RegionalFlowGraphPath path = UnitPathAssignmentRegionalFlowGraph.CreateRegionalFlowGraphPath(distribution, units);
 
-        Vector2 goal = flowGraph.Terminal.Center.GetWorldPosition();
+        //Vector2 goal = flowGraph.Terminal.Center.GetWorldPosition();
         bool sameStartingGate = true;
         if (path.regionalPaths[0].gatewayPath.Count == 0)
         {
@@ -76,15 +77,16 @@ public class RegionalFlowGraphPlanning
             List<int> shortestPath = Pathfinding.FlowGraphPath(flowGraph, source, terminal);
             if (shortestPath == null)
             {
+                //Debug.Log("Shortest path is null");
                 break;
             }
+            //Debug.Log($"Path Length: {shortestPath.Count}");
             //saturate the path in flow graph
             flowPaths.AddPath(flowGraph, shortestPath);
         }
 
-        List<ConcurrentPaths> concurrentPaths = flowPaths.Finish();
-
+        List<ConcurrentPaths> concurrentPaths = flowPaths.Finish(flowGraph);
         List<UnitPathAssignmentRegionalFlowGraph> distribution = FlowPaths.AssignUnitCountsToConcurrentPathsRegional(concurrentPaths, units.Count, flowGraph);
-        RegionalFlowGraphPath path = UnitPathAssignmentRegionalFlowGraph.CreateRegionalFlowGraphPath(distribution, units, true);
+        RegionalFlowGraphPath path = UnitPathAssignmentRegionalFlowGraph.CreateRegionalFlowGraphPath(distribution, units);
     }
 }

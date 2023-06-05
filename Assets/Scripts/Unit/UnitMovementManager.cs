@@ -11,9 +11,9 @@ public class UnitMovementManager : MonoBehaviour
     public List<Unit> units = new List<Unit>();
     public Dictionary<Unit, UnitVisualization> unitsToVisualizations;
 
-    private List<Unit> unitsToDelete = new List<Unit>();
-    private UnitsECS unitsECS = null;
-    public void SetUnits(List<Unit> units)
+    public List<Unit> unitsToDelete = new List<Unit>();
+    public UnitsECS unitsECS = null;
+    public void SetUnits(List<Unit> units, bool forceNew = false)
     {
         this.units = units;
         unitsToVisualizations = null;
@@ -21,10 +21,10 @@ public class UnitMovementManager : MonoBehaviour
         {
             unitsECS = new UnitsECS();
         }
-        unitsECS.InitializeUnits(units);
+        unitsECS.InitializeUnits(units, forceNew);
     }
 
-    public void SetUnits(List<Unit> units, List<UnitVisualization> unitVisualizations)
+    public void SetUnits(List<Unit> units, List<UnitVisualization> unitVisualizations, bool forceNew = false)
     {
         this.units = units;
         unitsToVisualizations = new Dictionary<Unit, UnitVisualization>();
@@ -36,12 +36,12 @@ public class UnitMovementManager : MonoBehaviour
         {
             unitsECS = new UnitsECS();
         }
-        unitsECS.InitializeUnits(units);
+        unitsECS.InitializeUnits(units, forceNew);
     }
 
     public void RemoveUnit(Unit unit)
     {
-        if (unitsToVisualizations != null)
+        if (unitsToVisualizations != null && unitsToVisualizations.ContainsKey(unit))
         {
             Destroy(unitsToVisualizations[unit].gameObject);
             unitsToVisualizations.Remove(unit);
@@ -73,6 +73,7 @@ public class UnitMovementManager : MonoBehaviour
                 FlowGraphPlanning.StartNewFlowGraphPlanWarmUp(flowGraph, units);
                 break;
             case MovementMode.RegionalFlowGraph:
+                //Debug.Log($"{start}, {target}, {Simulator.Instance.decomposition.regionMap[(int)start.x, (int)start.y]}, {Simulator.Instance.decomposition.regionMap[(int)target.x, (int)target.y]}");
                 FlowGraph flowGraphRFG = new FlowGraph(Simulator.Instance.partialFlowGraph, start, target, Simulator.Instance.decomposition.regionMap, Simulator.Instance.regionalPathfinding);
                 RegionalFlowGraphPlanning.StartNewFlowGraphPlanWarmUp(flowGraphRFG, units.ToHashSet());
                 break;
@@ -212,11 +213,64 @@ public class UnitMovementManager : MonoBehaviour
         {
             if (Simulator.Instance.experimentResults.gatesData != null && Simulator.Instance.experimentResults.gatesData.gatesAnalysis == null)
             {
+                Coord startCoord = Coord.CoordFromPosition(closestUnitToCentrePosition);
+                Coord targetCoord = Coord.CoordFromPosition(Simulator.Instance.target.Center);
+                int startRegion = Simulator.Instance.decomposition.regionMap[startCoord.X, startCoord.Y];
+                int targetRegion = Simulator.Instance.decomposition.regionMap[targetCoord.X, targetCoord.Y];
+
                 Simulator.Instance.experimentResults.gatesData.gatesAnalysis = new List<GateAnalysis>();
                 Dictionary<int, GateAnalysis> analysisDictionary = new Dictionary<int, GateAnalysis>();
                 foreach (RegionGateway gate in Simulator.Instance.decomposition.gateways)
                 {
                     GateAnalysis gateAnalysis = new GateAnalysis();
+                    for (int i = 0; i < gate.regionA.gateways.Count; i++)
+                    {
+                        if (gate.regionA.gateways[i].ID != gate.ID)
+                        {
+                            gateAnalysis.nearbyGates.Add(gate.regionA.gateways[i].ID);
+                            if (!Simulator.Instance.regionalPathfinding.distancesBetweenGates.ContainsKey(gate) ||
+                                !Simulator.Instance.regionalPathfinding.distancesBetweenGates[gate].ContainsKey(gate.regionA.gateways[i]))
+                            {
+                                //Debug.Log(Simulator.Instance.regionalPathfinding.distancesBetweenGates.ContainsKey(gate));
+                                gateAnalysis.nearbyGateDistances.Add(float.MaxValue);
+                            }
+                            else
+                            {
+                                //Debug.Log(Simulator.Instance.regionalPathfinding.distancesBetweenGates[gate][gate.regionA.gateways[i]]);
+                                gateAnalysis.nearbyGateDistances.Add(Simulator.Instance.regionalPathfinding.distancesBetweenGates[gate][gate.regionA.gateways[i]]);
+                            }
+                        }
+                    }
+                    for (int i = 0; i < gate.regionB.gateways.Count; i++)
+                    {
+                        int id = gate.regionB.gateways[i].ID;
+                        if (id != gate.ID && !gateAnalysis.nearbyGates.Contains(id))
+                        {
+                            gateAnalysis.nearbyGates.Add(id);
+                            if (!Simulator.Instance.regionalPathfinding.distancesBetweenGates.ContainsKey(gate) ||
+                                !Simulator.Instance.regionalPathfinding.distancesBetweenGates[gate].ContainsKey(gate.regionB.gateways[i]))
+                            {
+                                //Debug.Log(Simulator.Instance.regionalPathfinding.distancesBetweenGates.ContainsKey(gate));
+                                gateAnalysis.nearbyGateDistances.Add(float.MaxValue);
+                            }
+                            else
+                            {
+                                //Debug.Log(Simulator.Instance.regionalPathfinding.distancesBetweenGates[gate][gate.regionB.gateways[i]]);
+                                gateAnalysis.nearbyGateDistances.Add(Simulator.Instance.regionalPathfinding.distancesBetweenGates[gate][gate.regionB.gateways[i]]);
+                            }
+                        }
+                    }
+                    if (gate.regionB.ID == startRegion || gate.regionA.ID == startRegion)
+                    {
+                        gateAnalysis.nearbyGates.Add(-1);
+                        gateAnalysis.nearbyGateDistances.Add(Simulator.Instance.regionalPathfinding.flowMaps[Simulator.Instance.decomposition.mapRegions[startRegion].gateways.IndexOf(gate)][startCoord.X, startCoord.Y].distanceToGate);
+                    }
+                    if (gate.regionB.ID == targetRegion || gate.regionA.ID == targetRegion)
+                    {
+                        gateAnalysis.nearbyGates.Add(-2);
+                        gateAnalysis.nearbyGateDistances.Add(Simulator.Instance.regionalPathfinding.flowMaps[Simulator.Instance.decomposition.mapRegions[targetRegion].gateways.IndexOf(gate)][targetCoord.X, targetCoord.Y].distanceToGate);
+                    }
+
                     gateAnalysis.GateID = gate.ID;
                     gateAnalysis.Width = gate.GetSize();
                     gateAnalysis.FlowCapacity = FlowEdge.GetMaxFlow(gate.GetSize());
@@ -305,11 +359,14 @@ public class UnitMovementManager : MonoBehaviour
         {
             NativeArray<Vector2> seekForces = new NativeArray<Vector2>(units.Count, Allocator.TempJob);
 
+            System.Diagnostics.Stopwatch stopwatch = System.Diagnostics.Stopwatch.StartNew();
             for (int i = 0; i < units.Count; i++)
             {
                 seekForces[i] = units[i].GetSeekForce(internalMovementCycles * deltaTime);
                 units[i].desiredVelocity = SimulationSettings.instance.UnitSpeed * seekForces[i];
             }
+            stopwatch.Stop();
+            //Debug.Log($"Computing seek forces {stopwatch.Elapsed.TotalMilliseconds}");
 
             for (int i = 0; i < internalMovementCycles; i++)
             {

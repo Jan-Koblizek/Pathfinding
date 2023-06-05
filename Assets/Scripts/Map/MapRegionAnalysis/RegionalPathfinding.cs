@@ -1,6 +1,7 @@
 using JetBrains.Annotations;
 using System.Collections;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using UnityEngine;
 using static UnityEngine.RuleTile.TilingRuleOutput;
@@ -21,7 +22,12 @@ public static class RegionalPathfinding
 
         if (startRegion == goalRegion)
         {
-            List<Vector2> path = Pathfinding.ConstructPathAStar(start, goal, Pathfinding.StepDistance, 0.2f).ToList();
+            List<Vector2> path = Pathfinding.ConstructPathAStar(
+            new List<Coord>() { Coord.CoordFromPosition(start) }, 
+            new List<Coord>() { Coord.CoordFromPosition(goal)}, Pathfinding.StepDistance, 0.2f, 
+            ref Simulator.Instance.decomposition.regionMap, 
+            new HashSet<int> { finalGateway.ID + RegionalDecomposition.GatewayIndexOffset, goalRegion.ID}
+            ).ToList();
             return (new Dictionary<int, int>(), new Dictionary<int, int>(), new List<RegionGateway>(), path);
         }
 
@@ -85,7 +91,12 @@ public static class RegionalPathfinding
 
         Coord finalGatewayCentralCoord = finalGateway.gateTilesCoords[finalGateway.gateTilesCoords.Count / 2];
         List<RegionGateway> gatewayList = gatewayPath.ToList();
-        List<Vector2> finalPath = Pathfinding.ConstructPathAStar(finalGatewayCentralCoord.GetWorldPosition(), goal, Pathfinding.StepDistance, 0.2f).ToList();
+        List<Vector2> finalPath = Pathfinding.ConstructPathAStar(
+            new List<Coord>() { Coord.CoordFromPosition(finalGatewayCentralCoord.GetWorldPosition()) }, 
+            new List<Coord>() { Coord.CoordFromPosition(goal)}, Pathfinding.StepDistance, 0.2f, 
+            ref Simulator.Instance.decomposition.regionMap, 
+            new HashSet<int> { finalGateway.ID + RegionalDecomposition.GatewayIndexOffset, goalRegion.ID}
+            ).ToList();
 
         List<MapRegion> regionPath = new List<MapRegion>();
         regionPath.Add(startRegion);

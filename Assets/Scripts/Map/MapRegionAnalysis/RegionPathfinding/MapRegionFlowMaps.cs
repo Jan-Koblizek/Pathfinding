@@ -67,11 +67,15 @@ public static class MapRegionPathfinding
             {
                 float distance = 0.0f;
                 Vector2 currentPosition = gate.gateTilesCoords[gate.gateTilesCoords.Count / 2].GetWorldPosition();
+                List<Coord> start = new List<Coord>();
+                List<Coord> end = new List<Coord>();
+                start.Add(Coord.CoordFromPosition(gate.gateTilesCoords[gate.gateTilesCoords.Count / 2].GetWorldPosition()));
+                end.Add(Coord.CoordFromPosition(gate.gateTilesCoords[nearbyGate.gateTilesCoords.Count / 2].GetWorldPosition()));
+                int commonRegion = (gate.regionA.ID == nearbyGate.regionA.ID || gate.regionA.ID == nearbyGate.regionB.ID) ? gate.regionA.ID : gate.regionB.ID;
                 List<Vector2> pathBetweenTheGates = Pathfinding.ConstructPathAStar(
-                    gate.gateTilesCoords[gate.gateTilesCoords.Count / 2].GetWorldPosition(),
-                    nearbyGate.gateTilesCoords[nearbyGate.gateTilesCoords.Count / 2].GetWorldPosition(),
-                    Pathfinding.StepDistance,
-                    0.0f).ToList();
+                    start, end, Pathfinding.StepDistance,
+                    0.2f, ref decomposition.regionMap, 
+                    new HashSet<int> { commonRegion, gate.ID + RegionalDecomposition.GatewayIndexOffset, nearbyGate.ID + RegionalDecomposition.GatewayIndexOffset }).ToList();
                 if (pathBetweenTheGates != null && pathBetweenTheGates.Count > 0)
                 {
                     foreach (Vector2 point in pathBetweenTheGates)
@@ -122,11 +126,26 @@ public static class MapRegionPathfinding
             {
                 float distance = 0.0f;
                 Vector2 currentPosition = gate.gateTilesCoords[gate.gateTilesCoords.Count / 2].GetWorldPosition();
-                Stack<Vector2> pathBetweenTheGates = Pathfinding.ConstructPathAStar(
-                    gate.gateTilesCoords[gate.gateTilesCoords.Count / 2].GetWorldPosition(), 
-                    nearbyGate.gateTilesCoords[nearbyGate.gateTilesCoords.Count / 2].GetWorldPosition(),
-                    Pathfinding.StepDistance,
-                    0.0f);
+                List<Coord> start = new List<Coord>();
+                List<Coord> end = new List<Coord>();
+                start.Add(gate.gateTilesCoords[gate.gateTilesCoords.Count / 2]);
+                end.Add(nearbyGate.gateTilesCoords[nearbyGate.gateTilesCoords.Count / 2]);
+                if (!Map.instance.passabilityMap[end[0].X, end[0].Y])
+                {
+                    for (int it = 0; it < nearbyGate.gateTilesCoords.Count; it++)
+                    {
+                        if (Map.instance.passabilityMap[nearbyGate.gateTilesCoords[it].X, nearbyGate.gateTilesCoords[it].Y])
+                        {
+                            end[0] = nearbyGate.gateTilesCoords[it];
+                            break;
+                        }
+                    }
+                }
+                int commonRegion = (gate.regionA.ID == nearbyGate.regionA.ID || gate.regionA.ID == nearbyGate.regionB.ID) ? gate.regionA.ID : gate.regionB.ID;
+                List<Vector2> pathBetweenTheGates = Pathfinding.ConstructPathAStar(
+                    start, end, Pathfinding.StepDistance,
+                    0.2f, ref decomposition.regionMap,
+                    new HashSet<int> { commonRegion, gate.ID + RegionalDecomposition.GatewayIndexOffset, nearbyGate.ID + RegionalDecomposition.GatewayIndexOffset })?.ToList();
                 if (pathBetweenTheGates != null && pathBetweenTheGates.Count > 0)
                 {
                     foreach (Vector2 point in pathBetweenTheGates)
@@ -136,9 +155,26 @@ public static class MapRegionPathfinding
                     }
                     distancesToNearbyGates[nearbyGate] = distance;
                 }
-                else
-                {
-                    distancesToNearbyGates[nearbyGate] = float.MaxValue;
+                else {
+                    List<Vector2> pathBetweenTheGatesNoRestrictions = Pathfinding.ConstructPathAStar(
+                        start, end, Pathfinding.StepDistance,
+                        0.2f, ref decomposition.regionMap,
+                        new HashSet<int> { commonRegion, gate.ID + RegionalDecomposition.GatewayIndexOffset, nearbyGate.ID + RegionalDecomposition.GatewayIndexOffset }, true)?.ToList();
+                    if (pathBetweenTheGatesNoRestrictions != null && pathBetweenTheGatesNoRestrictions.Count > 0)
+                    {
+                        distance = 0;
+                        foreach (Vector2 point in pathBetweenTheGatesNoRestrictions)
+                        {
+                            distance += Vector2.Distance(point, currentPosition);
+                            currentPosition = point;
+                        }
+                        distancesToNearbyGates[nearbyGate] = distance;
+                    }
+                    else
+                    {
+                        Debug.Log("Infinite Distance");
+                        distancesToNearbyGates[nearbyGate] = float.MaxValue;
+                    }
                 }
             }
         }
@@ -153,6 +189,7 @@ public static class MapRegionPathfinding
             MapRegion region = decomposition.mapRegions[i];
             for (int j = 0; j < region.gateways.Count; j++)
             {
+                //Debug.Log(region.gateways[j].gateTilesCoords.Count);
                 costructDistanceFieldForOneGateAndRegion(region.gateways[j], region, ref flowMaps, ref decomposition);
             }
         }
@@ -199,17 +236,27 @@ public static class MapRegionPathfinding
 
         int pivot1Pos = (coordsGate.Count - 1) / 2;
         float cost = 1.0f;
-        while (pivot1Pos >= 0)
+        try
         {
-            cost += 0.5f;
-            Coord coord1 = coordsGate[pivot1Pos];
-            flowMaps[gateIndex][coord1.X, coord1.Y].distanceToGate = cost;
-            queue.Enqueue(cost, coord1);
+            while (pivot1Pos >= 0)
+            {
+                cost += 0.5f;
+                //Debug.Log($"pivotPos {pivot1Pos}, gateCoords {coordsGate.Count}");
+                Coord coord1 = coordsGate[pivot1Pos];
+                flowMaps[gateIndex][coord1.X, coord1.Y].distanceToGate = cost;
+                queue.Enqueue(cost, coord1);
 
-            Coord coord2 = coordsGate[coordsGate.Count - (pivot1Pos + 1)];
-            flowMaps[gateIndex][coord2.X, coord2.Y].distanceToGate = cost;
-            queue.Enqueue(cost, coord2);
-            pivot1Pos--;
+                Coord coord2 = coordsGate[coordsGate.Count - (pivot1Pos + 1)];
+                flowMaps[gateIndex][coord2.X, coord2.Y].distanceToGate = cost;
+                queue.Enqueue(cost, coord2);
+                pivot1Pos--;
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.Log(region.ID);
+            Debug.Log(gate.ID);
+            throw e;
         }
 
         while (queue.Count() != 0)
@@ -254,7 +301,7 @@ public static class MapRegionPathfinding
                         foreach (NeighborWithDistance neighbor in neighbors)
                         {
                             float newDistace = origDistance - (origDistance - flowMaps[i][neighbor.coord.X, neighbor.coord.Y].distanceToGate) / neighbor.distance;
-                            direction += new Vector2(neighbor.coord.X - x, neighbor.coord.Y - y) * Mathf.Clamp((origDistance - newDistace), -4, 4);
+                            direction += new Vector2(neighbor.coord.X - x, neighbor.coord.Y - y) * Mathf.Clamp((origDistance - newDistace), -1.5f, 1.5f);
                             modified = true;
                         }
                         if (modified)

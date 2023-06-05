@@ -20,16 +20,20 @@ public class UnitsECS
 
     private NativeList<Vector2> newUnitPositions;
     private NativeList<Vector2> forces;
-    public void InitializeUnits(List<Unit> units)
+    public void InitializeUnits(List<Unit> units, bool forceNew = false)
     {
         if (unitPositions.IsCreated)
         {
-            unitPositions.Dispose();
-            newUnitPositions.Dispose();
-            unitVelocities.Dispose();
-            unitMovements.Dispose();
-            unitDesiredVelocities.Dispose();
-            forces.Dispose();
+            if (forceNew) CleanArrays();
+            else
+            {
+                unitPositions.Dispose();
+                newUnitPositions.Dispose();
+                unitVelocities.Dispose();
+                unitMovements.Dispose();
+                unitDesiredVelocities.Dispose();
+                forces.Dispose();
+            }
         }
         unitPositions = new NativeList<Vector2>(units.Count, Allocator.Persistent);
         newUnitPositions = new NativeList<Vector2>(units.Count, Allocator.Persistent);
@@ -48,7 +52,7 @@ public class UnitsECS
             forces.Add(Vector2.zero);
         }
 
-        if (walls != null)
+        if (walls != null && !forceNew)
         {
             nearbyUnitsManager.Initialize(units, false);
         }
@@ -259,9 +263,9 @@ public class UnitsECS
             //float unitAvoidanceForceMagnitude = Mathf.Clamp(unitAvoidanceForces[index].magnitude, 0.0f, 1.0f);
             //float speedFactor = 1.0f - Mathf.Clamp(2 * velocities[index].magnitude - 1.0f, 0.0f, 1.0f);
             //float factor = unitAvoidanceForceMagnitude * (speedFactor * speedFactor);
-            float factor = Mathf.Clamp((2.0f * unitSeparationForces[index].magnitude - 1.0f), 0.0f, 1.0f);
+            //float factor = Mathf.Clamp((2.0f * unitSeparationForces[index].magnitude - 1.0f), 0.0f, 1.0f);
             Vector2 force =
-                (15.0f - 20.0f * factor) * seekForces[index] +
+                15.0f * seekForces[index] +
                 100.0f * unitSeparationForces[index] +
                 50.0f * wallRepulsionForces[index] +
                 10.0f * wallTurningForces[index] +

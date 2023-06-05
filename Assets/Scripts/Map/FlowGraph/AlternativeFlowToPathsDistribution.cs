@@ -5,7 +5,7 @@ using UnityEngine.Networking.Types;
 
 class AlternativeFlowToPathsDistribution
 {
-    private readonly List<ConcurrentPaths> _alternatives = new List<ConcurrentPaths>();
+    public readonly List<ConcurrentPaths> _alternatives = new List<ConcurrentPaths>();
 
     internal void MutatePath(AlternativeFlowToPathsDistribution completed, List<List<NodeID>> alternatingSubPaths, float negativeFlow, FlowGraph flowGraph)
     {
@@ -32,11 +32,15 @@ class AlternativeFlowToPathsDistribution
         }
     }
 
-    internal List<ConcurrentPaths> Finish(AlternativeFlowToPathsDistribution completed)
+    internal List<ConcurrentPaths> Finish(AlternativeFlowToPathsDistribution completed, FlowGraph flowGraph)
     {
+        foreach (ConcurrentPaths concurrentPath in completed._alternatives)
+        {
+            concurrentPath.Merge(flowGraph);
+        }
         foreach (ConcurrentPaths concurrentPath in _alternatives)
         {
-            concurrentPath.Merge();
+            concurrentPath.Merge(flowGraph);
         }
         completed._alternatives.AddRange(_alternatives);
         return completed._alternatives;

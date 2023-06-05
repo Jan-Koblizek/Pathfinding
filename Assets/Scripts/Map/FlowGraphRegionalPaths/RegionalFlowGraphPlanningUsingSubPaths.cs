@@ -21,10 +21,10 @@ public class RegionalFlowGraphPlanningUsingSubPaths
             flowPaths.AddPath(flowGraph, shortestPath);
         }
 
-        List<ConcurrentPaths> concurrentPaths = flowPaths.Finish();
+        List<ConcurrentPaths> concurrentPaths = flowPaths.Finish(flowGraph);
 
         List<UnitPathAssignmentRegionalFlowGraph> distribution = FlowPaths.AssignUnitCountsToConcurrentPathsRegional(concurrentPaths, units.Count, flowGraph);
-        RegionalFlowGraphPathUsingSubPaths path = UnitPathAssignmentRegionalFlowGraph.CreateRegionalFlowGraphPathUsingSubPaths(distribution, units, true);
+        RegionalFlowGraphPathUsingSubPaths path = UnitPathAssignmentRegionalFlowGraph.CreateRegionalFlowGraphPathUsingSubPaths(distribution);
 
         Vector2 goal = flowGraph.Terminal.Center.GetWorldPosition();
         bool sameStartingGate = true;
@@ -69,9 +69,9 @@ public class RegionalFlowGraphPlanningUsingSubPaths
             flowPaths.AddPath(flowGraph, shortestPath);
         }
 
-        List<ConcurrentPaths> concurrentPaths = flowPaths.Finish();
+        List<ConcurrentPaths> concurrentPaths = flowPaths.Finish(flowGraph);
 
         List<UnitPathAssignmentRegionalFlowGraph> distribution = FlowPaths.AssignUnitCountsToConcurrentPathsRegional(concurrentPaths, units.Count, flowGraph);
-        RegionalFlowGraphPathUsingSubPaths path = UnitPathAssignmentRegionalFlowGraph.CreateRegionalFlowGraphPathUsingSubPaths(distribution, units, true);
+        RegionalFlowGraphPathUsingSubPaths path = UnitPathAssignmentRegionalFlowGraph.CreateRegionalFlowGraphPathUsingSubPaths(distribution);
     }
 }

@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
-using System.Drawing;
+using System.IO;
+using System.Linq;
 using UnityEngine;
 
 public class RegionalFlowGraphPathExecutor
@@ -54,16 +55,24 @@ public class RegionalFlowGraphPathExecutor
 
     public Vector2 GetSeekForce(float deltaTime)
     {
+        /*
+        if (pathIndex == 0)
+            Simulator.Instance.unitMovementManager.unitsToVisualizations[unit].SetColor(Color.red);
+        if (pathIndex == 1)
+            Simulator.Instance.unitMovementManager.unitsToVisualizations[unit].SetColor(Color.blue);
+        if (pathIndex == 2)
+            Simulator.Instance.unitMovementManager.unitsToVisualizations[unit].SetColor(Color.green);
+        */
         int currentRegion = decomposition.regionMap[unit.currentCoord.X, unit.currentCoord.Y];
         if (!reachedFinalRegion &&
             regionalPath.regionalPaths[pathIndex].gatewayDirections.ContainsKey(currentRegion - RegionalDecomposition.GatewayIndexOffset) ||
             regionalPath.regionalPaths[pathIndex].regionDirections.ContainsKey(currentRegion))
         {
             Vector2 pos = unit.position;
-            Coord ff = new Coord(Mathf.FloorToInt(pos.x), Mathf.FloorToInt(pos.y));
-            Coord fc = new Coord(Mathf.FloorToInt(pos.x), Mathf.CeilToInt(pos.y));
-            Coord cf = new Coord(Mathf.CeilToInt(pos.x), Mathf.FloorToInt(pos.y));
-            Coord cc = new Coord(Mathf.CeilToInt(pos.x), Mathf.CeilToInt(pos.y));
+            Coord ff = new Coord(Mathf.Clamp(Mathf.FloorToInt(pos.x), 0, decomposition.regionMap.GetLength(0) - 1), Mathf.Clamp(Mathf.FloorToInt(pos.y), 0, decomposition.regionMap.GetLength(1) - 1));
+            Coord fc = new Coord(Mathf.Clamp(Mathf.FloorToInt(pos.x), 0, decomposition.regionMap.GetLength(0) - 1), Mathf.Clamp(Mathf.CeilToInt(pos.y), 0, decomposition.regionMap.GetLength(1) - 1));
+            Coord cf = new Coord(Mathf.Clamp(Mathf.CeilToInt(pos.x), 0, decomposition.regionMap.GetLength(0) - 1), Mathf.Clamp(Mathf.FloorToInt(pos.y), 0, decomposition.regionMap.GetLength(1) - 1));
+            Coord cc = new Coord(Mathf.Clamp(Mathf.CeilToInt(pos.x), 0, decomposition.regionMap.GetLength(0) - 1), Mathf.Clamp(Mathf.CeilToInt(pos.y), 0, decomposition.regionMap.GetLength(1) - 1));
             float strengthFF = 1.5f - Vector2.Distance(pos, new Vector2(ff.X, ff.Y));
             float strengthFC = 1.5f - Vector2.Distance(pos, new Vector2(fc.X, fc.Y));
             float strengthCF = 1.5f - Vector2.Distance(pos, new Vector2(cf.X, cf.Y));
@@ -121,6 +130,7 @@ public class RegionalFlowGraphPathExecutor
         }
         else
         {
+            bool corrected = false;
             for (int i = 0; i < regionalPath.regionalPaths.Count; i++)
             {
                 if (regionalPath.regionalPaths[i].gatewayDirections.ContainsKey(currentRegion - RegionalDecomposition.GatewayIndexOffset) ||
@@ -128,8 +138,17 @@ public class RegionalFlowGraphPathExecutor
                 {
                     unit.softRepaths++;
                     pathIndex = i;
+                    corrected = true;
                     break;
                 }
+            }
+            if (!corrected)
+            {
+                //Debug.Log(currentRegion);
+                unit.repaths++;
+                List<Vector2> finalPath = regionalPath.regionalPaths[pathIndex].finalPath;
+                unit.MoveAlongThePath(Pathfinding.ConstructPathAStar(unit.position, finalPath[finalPath.Count - 1], Pathfinding.StepDistance, 0.2f)?.ToList());
+                unit.movementMode = MovementMode.PathFollowing;
             }
             return new Vector2(0, 0);
         }

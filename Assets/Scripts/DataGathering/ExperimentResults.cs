@@ -24,7 +24,7 @@ public class ExperimentResults
         unitPathsData = new UnitPathsData();
     }
 
-    public void WriteExperimentResultsToFile(string filePath)
+    public void WriteExperimentResultsToFile(string filePath, bool fail)
     {
         FileInfo fi = new FileInfo(filePath);
         Debug.Log(fi.FullName);
@@ -33,6 +33,13 @@ public class ExperimentResults
             Directory.CreateDirectory(fi.DirectoryName);
         }
         StreamWriter writer = new StreamWriter(filePath);
+        if (fail)
+        {
+            Debug.Log("Fail");
+            writer.WriteLine("Fail");
+            writer.Close();
+            return;
+        }
         writer.WriteLine($"Experiment Name: {experimentName}");
         writer.WriteLine($"Method Used: {movementModeName}");
         writer.WriteLine($"Run Number: {runNumber}");
@@ -55,6 +62,17 @@ public class ExperimentResults
             if (!first) writer.Write(",");
             else first = false;
             writer.Write($"[{unitID},{distance}]");
+        }
+        writer.WriteLine("");
+
+        writer.WriteLine("");
+        writer.WriteLine($"Finish Times:");
+        first = true;
+        foreach ((int unitID, float time) in unitPathsData.finishTimes)
+        {
+            if (!first) writer.Write(",");
+            else first = false;
+            writer.Write($"[{unitID},{time}]");
         }
         writer.WriteLine("");
 
@@ -140,6 +158,10 @@ public class ExperimentResults
             WriteFlowStreams(gateAnalysis.FlowStreams, writer);
             writer.Write("Joined Flow Streams:");
             WriteJoinedFlowStreams(gateAnalysis.joinedStreams, writer);
+            writer.Write("Nearby Gates:");
+            WriteNearbyGates(gateAnalysis.nearbyGates, writer);
+            writer.Write("Nearby Gate Distances:");
+            WriteNearbyGateDistances(gateAnalysis.nearbyGateDistances, writer);
         }
         writer.Close();
     }
@@ -163,6 +185,30 @@ public class ExperimentResults
             writer.WriteLine(String.Join(',', line));
         }
         writer.Close();
+    }
+
+    private void WriteNearbyGates(List<int> gates, StreamWriter writer)
+    {
+        bool first = true;
+        foreach (int gateID in gates)
+        {
+            if (!first) writer.Write(",");
+            else first = false;
+            writer.Write(gateID);
+        }
+        writer.WriteLine("");
+    }
+
+    private void WriteNearbyGateDistances(List<float> gateDistances, StreamWriter writer)
+    {
+        bool first = true;
+        foreach (float distance in gateDistances)
+        {
+            if (!first) writer.Write(",");
+            else first = false;
+            writer.Write(distance);
+        }
+        writer.WriteLine("");
     }
 
     private void WriteFlowStreams(Dictionary<int, (float DistanceToGoal, float expectedStartTime, float expectedFinishTime, List<(float, float)> expectedFlow)> flowStreams, StreamWriter writer)

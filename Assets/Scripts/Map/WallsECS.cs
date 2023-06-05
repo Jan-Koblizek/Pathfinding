@@ -325,6 +325,7 @@ public class WallsECS
             Unity.Mathematics.Random random = new Unity.Mathematics.Random((uint)((index + 13) * (time + 7)));
             Vector2 initDirection = (Vector2.right).Rotate(random.NextFloat()*90.0f);
 
+            NativeList<Vector2> repulsionForces = new NativeList<Vector2>(obstacleRepulsionRays.Length, Allocator.Temp);
             foreach (var (angle, length) in obstacleRepulsionRays)
             {
                 Vector2 rayDirection = initDirection.Rotate(angle).normalized;
@@ -339,8 +340,26 @@ public class WallsECS
                 float distanceFactor = (length - hitDistance) / length;
                 Vector2 repulsionForce = -rayDirection * distanceFactor * distanceFactor * distanceFactor;
 
-                wallRepulsionForce += repulsionForce;
+                repulsionForces.Add(repulsionForce);
             }
+            /*
+            for (int i = 0; i < repulsionForces.Length; i++)
+            {
+                if (repulsionForces[i].magnitude < 0.02 && 
+                    repulsionForces[(i-1 + repulsionForces.Length) % repulsionForces.Length].magnitude > 0.02 && 
+                    repulsionForces[(i+1)%repulsionForces.Length].magnitude > 0.02)
+                {
+                    repulsionForces[i] = new Vector2(0.0f, 0.0f);
+                    repulsionForces[(i - 1 + repulsionForces.Length) % repulsionForces.Length] = new Vector2(0.0f, 0.0f);
+                    repulsionForces[(i + 1) % repulsionForces.Length] = new Vector2(0.0f, 0.0f);
+                }
+            }
+            */
+            for (int i = 0; i < repulsionForces.Length; i++)
+            {
+                wallRepulsionForce += repulsionForces[i];
+            }
+
             return wallRepulsionForce.LimitMagnitude(maxForce);
         }
 

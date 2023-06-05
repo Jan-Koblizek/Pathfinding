@@ -392,7 +392,7 @@ public class NearbyUnitsManagerECS
             if (distance != 0)
             {
                 repulsiveForce = maxForce2 * SeparationForceCalculator(distanceBounds / 1.0f);
-                return repulsiveForce.LimitMagnitude(maxForce);
+                return repulsiveForce;
             }
             return Vector2.zero;
         }

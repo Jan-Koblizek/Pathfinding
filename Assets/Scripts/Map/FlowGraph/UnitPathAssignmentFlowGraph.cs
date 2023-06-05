@@ -77,8 +77,11 @@ public class UnitPathAssignmentFlowGraph
             ll.paths = pathsForUnits;
             ll.assignedUnits = units;
             ll.unitCount = units.Count;
+            l.Add(ll);
+            return l;
         }
         int gateDifferenceDepth = GetSmallestDifference(pathsForUnits);
+        //Debug.Log($"Depth: {gateDifferenceDepth}, number of paths: {pathsForUnits.Count}, path1 {pathsForUnits[0]._centerList.Count}, path2 {pathsForUnits[1]._centerList.Count}");
 
         var gates = new Dictionary<Vector2, List<UnitPathAssignmentFlowGraph>>();
         foreach (var path in pathsForUnits)
@@ -234,7 +237,7 @@ public class UnitPathAssignmentFlowGraph
                 units.ExceptWith(l.assignedUnits);
                 continue;
             }
-
+            //Debug.Log(l.paths.Count);
             assigner(l.paths, l.assignedUnits, gridPaths, isWarmUp);
         }
     }

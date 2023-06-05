@@ -22,7 +22,7 @@ public class FlowGraphPlanning
             flowPaths.AddPath(flowGraph, shortestPath);
         }
 
-        List<ConcurrentPaths> concurrentPaths = flowPaths.Finish();
+        List<ConcurrentPaths> concurrentPaths = flowPaths.Finish(flowGraph);
         List<UnitPathAssignmentFlowGraph> distribution = FlowPaths.AssignUnitCountsToConcurrentPaths(concurrentPaths, units.Count, flowGraph);       
         UnitPathAssignmentFlowGraph.AssignUnitPathsHeuristic(distribution, false);
     }
@@ -44,7 +44,7 @@ public class FlowGraphPlanning
             flowPaths.AddPath(flowGraph, shortestPath);
         }
 
-        List<ConcurrentPaths> concurrentPaths = flowPaths.Finish();
+        List<ConcurrentPaths> concurrentPaths = flowPaths.Finish(flowGraph);
         List<UnitPathAssignmentFlowGraph> distribution = FlowPaths.AssignUnitCountsToConcurrentPaths(concurrentPaths, units.Count, flowGraph);
         UnitPathAssignmentFlowGraph.AssignUnitPathsHeuristic(distribution, true);
     }

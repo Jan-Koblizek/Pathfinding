@@ -60,6 +60,8 @@ public class UnitPathAssignmentRegionalFlowGraph
             ll.pathIndices = pathIndices;
             ll.assignedUnits = units;
             ll.unitCount = units.Count;
+            l.Add(ll);
+            return l;
         }
 
         var gates = new Dictionary<Vector2, List<int>>();
@@ -115,6 +117,8 @@ public class UnitPathAssignmentRegionalFlowGraph
             ll.pathIndices = pathIndices;
             ll.assignedUnits = units;
             ll.unitCount = units.Count;
+            l.Add(ll);
+            return l;
         }
 
         var gates = new Dictionary<Vector2, List<int>>();
@@ -313,7 +317,7 @@ public class UnitPathAssignmentRegionalFlowGraph
         }
     }
 
-    internal static RegionalFlowGraphPath CreateRegionalFlowGraphPath(List<UnitPathAssignmentRegionalFlowGraph> pathsForUnits, HashSet<Unit> units, bool isWarmUp)
+    internal static RegionalFlowGraphPath CreateRegionalFlowGraphPath(List<UnitPathAssignmentRegionalFlowGraph> pathsForUnits, HashSet<Unit> units)
     {
         pathsForUnits = RemoveZeroPaths(pathsForUnits);
         List<RegionalPath> gridPaths = GetRegionalPaths(pathsForUnits);
@@ -326,13 +330,14 @@ public class UnitPathAssignmentRegionalFlowGraph
         for (int i = 0; i < pathsForUnits.Count; i++)
         {
             regionalPaths.Add((gridPaths[i], pathsForUnits[i].flow, pathsForUnits[i].assignedUnits));
+            //Debug.Log($"{gridPaths[i]}, {pathsForUnits[i].flow}, {pathsForUnits[i].assignedUnits}");
         }
 
         RegionalFlowGraphPath regionalFlowGraphPath = new RegionalFlowGraphPath(regionalPaths);
         return regionalFlowGraphPath;
     }
 
-    internal static RegionalFlowGraphPathUsingSubPaths CreateRegionalFlowGraphPathUsingSubPaths(List<UnitPathAssignmentRegionalFlowGraph> pathsForUnits, HashSet<Unit> units, bool isWarmUp)
+    internal static RegionalFlowGraphPathUsingSubPaths CreateRegionalFlowGraphPathUsingSubPaths(List<UnitPathAssignmentRegionalFlowGraph> pathsForUnits)
     {
         pathsForUnits = RemoveZeroPaths(pathsForUnits);
         List<RegionalPathUsingSubPaths> gridPaths = GetRegionalPathsUsingSubPaths(pathsForUnits);
@@ -465,19 +470,25 @@ public class UnitPathAssignmentRegionalFlowGraph
             }
 
             List<Vector2> finalPath;
+            Coord goalCoord = Coord.CoordFromPosition(possiblePath.centerList[possiblePath.centerList.Count - 1]);
+            int goalRegion = regionalPath.regionalPathfindingAnalysis.decomposition.regionMap[goalCoord.X, goalCoord.Y];
             if (regionGateways.Count > 0)
             {
                 finalPath = Pathfinding.ConstructPathAStar(
-                                regionGateways[regionGateways.Count - 1].GetCentralPosition(),
-                                possiblePath.centerList[possiblePath.centerList.Count - 1],
-                                Pathfinding.StepDistance, 0.2f).ToList();
+                    new List<Coord>() { Coord.CoordFromPosition(regionGateways[regionGateways.Count - 1].GetCentralPosition()) },
+                    new List<Coord>() { Coord.CoordFromPosition(possiblePath.centerList[possiblePath.centerList.Count - 1]) }, Pathfinding.StepDistance, 0.2f,
+                    ref Simulator.Instance.decomposition.regionMap,
+                    new HashSet<int> { regionGateways[regionGateways.Count - 1].ID + RegionalDecomposition.GatewayIndexOffset, goalRegion }
+                    ).ToList();
             }
             else
             {
                 finalPath = Pathfinding.ConstructPathAStar(
-                    possiblePath.centerList[0],
-                    possiblePath.centerList[possiblePath.centerList.Count - 1],
-                    Pathfinding.StepDistance, 0.2f).ToList();
+                    new List<Coord>() { Coord.CoordFromPosition(possiblePath.centerList[0]) },
+                    new List<Coord>() { Coord.CoordFromPosition(possiblePath.centerList[possiblePath.centerList.Count - 1]) }, Pathfinding.StepDistance, 0.2f,
+                    ref Simulator.Instance.decomposition.regionMap,
+                    new HashSet<int> { goalRegion }
+                    ).ToList();
             }
 
             regionalPath.finalPath = finalPath;

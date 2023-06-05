@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using Unity.VisualScripting;
 using UnityEngine;
 
 internal class ConcurrentPaths
@@ -37,7 +38,7 @@ internal class ConcurrentPaths
     /// </summary>
     /// <param name="sameCostRange">PathID that have same cost and are sorted by the underlying rawID</param>
     /// <returns>True if there was a change</returns>
-    private bool MergeSortedPath(List<PathID> sameCostRange)
+    private bool MergeSortedPath(List<PathID> sameCostRange, FlowGraph flowGraph)
     {
         bool change = false;
         for (int j = 1; j < sameCostRange.Count; j++)
@@ -47,7 +48,17 @@ internal class ConcurrentPaths
             var rawID0 = PlannerPath.RawPath.PathIDToRaw[p0];
             var rawID1 = PlannerPath.RawPath.PathIDToRaw[p1];
 
-            if (rawID0 == rawID1)
+            List<Vector2> path0 = PlannerPath.GetPathsFlowNodeCenters(flowGraph, p0);
+            List<Vector2> path1 = PlannerPath.GetPathsFlowNodeCenters(flowGraph, p1);
+            bool same = true;
+            if (rawID0 != rawID1) {
+                for (int i = 0; i < path0.Count; i++)
+                {
+                    same = i < path1.Count && path1[i] == path0[i];
+                    if (!same) break;
+                }
+            }
+            if (same)
             {
                 sameCostRange[j - 1] = Merge(p0, p1);
                 sameCostRange.RemoveAt(j);
@@ -76,7 +87,7 @@ internal class ConcurrentPaths
     /// <summary>
     /// Sorts and merges the concurrent paths.
     /// </summary>
-    internal void Merge()
+    internal void Merge(FlowGraph flowGraph)
     {
         //we can't just detect the twos next to each other
         //a b a b, where a, b are paths would not be found...
@@ -91,18 +102,20 @@ internal class ConcurrentPaths
 
         for (int i = 1; i < _atOnce.Count; i++)
         {
-            Single cost0 = PlannerPath.GetPathById(_atOnce[i - 1]).Cost;
-            Single cost1 = PlannerPath.GetPathById(_atOnce[i]).Cost;
+            PlannerPath path1 = PlannerPath.GetPathById(_atOnce[i - 1]);
+            PlannerPath path2 = PlannerPath.GetPathById(_atOnce[i]);
+            Single cost0 = path1.Cost;
+            Single cost1 = path2.Cost;
 
             //cost0 != cost1 (stop of the sequence of same costs)
-            if (Mathf.Abs(cost0 - cost1) > 0.001f)
+            if (Mathf.Abs(cost0 - cost1) > 0.05f)
             {
                 int count = i - prev;
                 if (count > 1)
                 {
                     List<PathID> sameCostRange = _atOnce.GetRange(prev, count);
                     sameCostRange.Sort(ComparePathsByRawPath);
-                    bool change = MergeSortedPath(sameCostRange);
+                    bool change = MergeSortedPath(sameCostRange, flowGraph);
 
                     if (change)
                     {
@@ -110,6 +123,12 @@ internal class ConcurrentPaths
                         _atOnce.InsertRange(prev, sameCostRange);
                         i = prev + sameCostRange.Count - 1;
                     }
+                    /*
+                    else
+                    {
+                        Debug.Log(count);
+                    }
+                    */
                 }
                 prev = i;
             }
@@ -599,7 +618,7 @@ internal class ConcurrentPaths
 
             }
         }
-        Debug.Log(foundSets.Count);
+        //Debug.Log(foundSets.Count);
         return foundSets;
     }
 

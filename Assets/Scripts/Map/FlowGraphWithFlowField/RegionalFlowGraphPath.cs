@@ -65,9 +65,8 @@ public class RegionalFlowGraphPath
                             }
                             catch (System.Exception e)
                             {
-                                Debug.Log(gatewayOrders.Count);
-                                Debug.Log(gatewayOrders[i].Count);
-                                Debug.Log(gatewayOrders[j].Count);
+                                Debug.Log(i);
+                                Debug.Log(j);
                                 Debug.Log(k);
                                 Debug.Log(otherPosition);
                                 throw e;
@@ -78,7 +77,14 @@ public class RegionalFlowGraphPath
                 }
             }
         }
-
+        /*
+        for (int x = 0; x < gatewayOrders.Count; x++)
+        {
+            string gateOrderString = "";
+            foreach (int gateID in gatewayOrders[x]) gateOrderString += gateID + ", ";
+            Debug.Log($"ID: {x}, path: {gateOrderString}, Number of Units: {unitCounts[x]}");
+        }
+        */
         regionToFlowDivider = new Dictionary<int, PathFlowDivider>();
         foreach (KeyValuePair<int, HashSet<int>> lastCommonGate in lastCommonGates)
         {

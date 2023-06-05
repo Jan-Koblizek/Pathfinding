@@ -37,6 +37,8 @@ public class GateData
 //Common for all the methods and runs
 public class GateAnalysis
 {
+    public List<int> nearbyGates;
+    public List<float> nearbyGateDistances;
     public int GateID;
     public float FlowCapacity;
     public float Width;
@@ -47,5 +49,7 @@ public class GateAnalysis
     {
         FlowStreams = new Dictionary<int, (float DistanceToGoal, float expectedStartTime, float expectedFinishTime, List<(float, float)> expectedFlow)>();
         joinedStreams = new List<List<int>>();
+        nearbyGates = new List<int>();
+        nearbyGateDistances = new List<float>();
     }
 }

@@ -135,7 +135,7 @@ public class FlowGraph
 
         if (goalZone == sourceZone)
         {
-            FlowEdge directEdge = new FlowEdge(Source, Terminal, Vector2.Distance(goal, source), 1000000);
+            FlowEdge directEdge = new FlowEdge(Source, Terminal, goal.OctileDistance(source), 1000000);
             Edges.Add(directEdge);
             _idToEdges.Add(directEdge.Id, directEdge);
             (int, int) key = (Source.Id, Terminal.Id);
@@ -151,13 +151,17 @@ public class FlowGraph
         if (!partialFlowGraph.zoneToNodes.ContainsKey(goalZone)) partialFlowGraph.zoneToNodes[goalZone] = new HashSet<FlowNode> { };
         HashSet<FlowNode> SourceZoneNodes = partialFlowGraph.zoneToNodes[sourceZone];
         HashSet<FlowNode> TerminalZoneNodes = partialFlowGraph.zoneToNodes[goalZone];
+        //Debug.Log($"Source Zone Nodes {SourceZoneNodes.Count}, Terminal Zone Nodes {TerminalZoneNodes.Count}");
         foreach (FlowEdge edge in Edges) edge.Flow = 0;
 
         foreach (FlowNode node in TerminalZoneNodes)
         {
+            //Debug.Log(node.ChokePoint.ID);
             //Specify length to speed up initialization
             float edgeLength = analysis.flowMaps[goalRegion.gateways.IndexOf(node.ChokePoint)][goalCoord.X, goalCoord.Y].distanceToGate;
-            FlowEdge edge = new FlowEdge(node, Terminal, edgeLength, float.MaxValue);
+            //Debug.Log(edgeLength);
+            FlowEdge edge = new FlowEdge(node, Terminal, edgeLength, 1000000);
+            edge.Flow = 0;
             Edges.Add(edge);
             _idToEdges.Add(edge.Id, edge);
             (int, int) key = (Terminal.Id, node.Id);
@@ -173,7 +177,7 @@ public class FlowGraph
         {
             //Specify length to speed up initialization
             float edgeLength = analysis.flowMaps[sourceRegion.gateways.IndexOf(node.ChokePoint)][sourceCoord.X, sourceCoord.Y].distanceToGate;
-            FlowEdge edge = new FlowEdge(Source, node, edgeLength, float.MaxValue);
+            FlowEdge edge = new FlowEdge(Source, node, edgeLength, 1000000);
             Edges.Add(edge);
             _idToEdges.Add(edge.Id, edge);
             (int, int) key = (Source.Id, node.Id);
@@ -219,8 +223,9 @@ public class FlowGraph
 
         if (goalZone == sourceZone)
         {
-            FlowEdge directEdge = new FlowEdge(Source, Terminal, Vector2.Distance(goal, source), 1000000);
+            FlowEdge directEdge = new FlowEdge(Source, Terminal, goal.OctileDistance(source), 1000000);
             Edges.Add(directEdge);
+            directEdge.Flow = 0;
             _idToEdges.Add(directEdge.Id, directEdge);
             (int, int) key = (Source.Id, Terminal.Id);
             (int, int) opposite = (Terminal.Id, Source.Id);
@@ -236,7 +241,7 @@ public class FlowGraph
         foreach (FlowNode node in TerminalZoneNodes)
         {
             //Specify length to speed up initialization
-            FlowEdge edge = new FlowEdge(node, Terminal, float.MaxValue);
+            FlowEdge edge = new FlowEdge(node, Terminal, 1000000);
             Edges.Add(edge);
             _idToEdges.Add(edge.Id, edge);
             (int, int) key = (Terminal.Id, node.Id);
@@ -251,7 +256,7 @@ public class FlowGraph
         foreach (FlowNode node in SourceZoneNodes)
         {
             //Specify length to speed up initialization
-            FlowEdge edge = new FlowEdge(Source, node, float.MaxValue);
+            FlowEdge edge = new FlowEdge(Source, node, 1000000);
             Edges.Add(edge);
             _idToEdges.Add(edge.Id, edge);
             (int, int) key = (Source.Id, node.Id);

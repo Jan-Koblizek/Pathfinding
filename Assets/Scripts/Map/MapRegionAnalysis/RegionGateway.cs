@@ -29,6 +29,7 @@ public class RegionGateway : IEquatable<RegionGateway>
 
     public Vector2 GetCentralPosition()
     {
+        //Debug.Log($"Central Position {(start.GetWorldPosition() + end.GetWorldPosition()) / 2}");
         return (start.GetWorldPosition() + end.GetWorldPosition()) / 2;
     }
 
@@ -87,5 +88,10 @@ public class RegionGateway : IEquatable<RegionGateway>
     public bool Equals(RegionGateway other)
     {
         return other.ID == ID;
+    }
+
+    public override int GetHashCode()
+    {
+        return ID + 12357;
     }
 }

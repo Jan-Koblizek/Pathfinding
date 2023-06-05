@@ -61,7 +61,7 @@ public class FlowEdge
 
     private static float GetDistanceBetweenFlowNodes(FlowNode start, FlowNode end)
     {
-        float distance = DistanceBetweenChokeCenters(start, end);
+        float distance = DistanceBetweenChokeCenters(start, end, ref Simulator.Instance.decomposition.regionMap);
         return distance;
     }
 
@@ -71,11 +71,15 @@ public class FlowEdge
     }
 
 
-    public static float MinimumDistanceBetweenChokes(FlowNode a, FlowNode b)
+    public static float MinimumDistanceBetweenChokes(FlowNode a, FlowNode b, ref int[,] regionMap)
     {
         List<Coord> start = a.ChokePoint?.gateTilesCoords ?? new List<Coord> { a.Center };
         List<Coord> end = b.ChokePoint?.gateTilesCoords ?? new List<Coord> { b.Center };
-        Stack<Vector2> pathStack = Pathfinding.ConstructPathAStar(start, end,  Pathfinding.StepDistance, 0.2f);
+        if (a.regionId != b.regionId) throw new Exception();
+        HashSet<int> allowedRegions = new HashSet<int> { a.regionId };
+        if (a.ChokePoint != null) allowedRegions.Add(a.ChokePoint.ID + RegionalDecomposition.GatewayIndexOffset);
+        if (b.ChokePoint != null) allowedRegions.Add(b.ChokePoint.ID + RegionalDecomposition.GatewayIndexOffset);
+        Stack<Vector2> pathStack = Pathfinding.ConstructPathAStar(start, end, Pathfinding.StepDistance, 0.2f, ref regionMap, allowedRegions);
         List<Vector2> path = pathStack.ToList();
         if (path == null)
         {
@@ -98,17 +102,22 @@ public class FlowEdge
         return sum;
     }
 
-    public static float DistanceBetweenChokeCenters(FlowNode a, FlowNode b)
+    public static float DistanceBetweenChokeCenters(FlowNode a, FlowNode b, ref int[,] regionMap)
     {
         List<Coord> start = new List<Coord> { a.Center };
         List<Coord> end = new List<Coord> { b.Center };
-        Stack<Vector2> pathStack = Pathfinding.ConstructPathAStar(start, end, Pathfinding.StepDistance, 0.2f);
-        List<Vector2> path = pathStack.ToList();
-        if (path == null)
+        if (a.regionId != b.regionId) throw new Exception();
+        HashSet<int> allowedRegions = new HashSet<int> { a.regionId };
+        if (a.ChokePoint != null) allowedRegions.Add(a.ChokePoint.ID + RegionalDecomposition.GatewayIndexOffset);
+        if (b.ChokePoint != null) allowedRegions.Add(b.ChokePoint.ID + RegionalDecomposition.GatewayIndexOffset);
+
+        Stack <Vector2> pathStack = Pathfinding.ConstructPathAStar(start, end, Pathfinding.StepDistance, 0.2f, ref regionMap, allowedRegions);
+        if (pathStack == null)
         {
             //no path found
             return int.MaxValue;
         }
+        List<Vector2> path = pathStack.ToList();
 
         if (path.Count == 1)
         {

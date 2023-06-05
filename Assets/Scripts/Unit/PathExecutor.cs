@@ -12,7 +12,8 @@ public class PathExecutor
     public Vector2 steeringTarget;
     private List<Vector2> path;
 
-    private float targetUpdatePeriod = 5.0f;
+    private float targetUpdatePeriod;
+    private float targetUpdatePeriodBase = 5.0f;
     private float targetUpdateTime;
 
     private int targetLastSeenCounter = 0;
@@ -20,6 +21,7 @@ public class PathExecutor
 
     public PathExecutor(Unit unit, ref List<Vector2> path)
     {
+        targetUpdatePeriod = targetUpdatePeriodBase;
         this.unit = unit;
         this.path = path;
         targetUpdateTime = targetUpdatePeriod * 2;
@@ -29,6 +31,7 @@ public class PathExecutor
 
     public PathExecutor(Unit unit, List<Vector2> path)
     {
+        targetUpdatePeriod = targetUpdatePeriodBase;
         this.unit = unit;
         this.path = path;
         targetUpdateTime = targetUpdatePeriod * 2;
@@ -38,6 +41,7 @@ public class PathExecutor
 
     public PathExecutor(Unit unit, ref Stack<Vector2> path)
     {
+        targetUpdatePeriod = targetUpdatePeriodBase;
         this.unit = unit;
         this.path = path.ToList();
         targetUpdateTime = targetUpdatePeriod * 2;
@@ -62,42 +66,42 @@ public class PathExecutor
         {
             return steeringTargetIndex;
         }
+        int closestPathIndex = GetIndexOfTheClosestPathPoint();
         previousSteeringTarget = steeringTarget;
-        int i;
         int pathIndex;
         if (Map.instance.walls.pathClearBetweenPositions(unit.position, path[steeringTargetIndex]))
         {
             pathIndex = steeringTargetIndex;
-            i = pathIndex + 1;
             targetLastSeenCounter = 0;
         }
         else
         {
-            pathIndex = GetIndexOfTheClosestPathPoint();
-            i = pathIndex;
+            pathIndex = closestPathIndex;
 
             while (pathIndex != 0 && !Map.instance.walls.pathClearBetweenPositions(unit.position, path[pathIndex]))
             {
-                if (pathIndex > 10) i = pathIndex -= 10;
-                else i = pathIndex = 0;
+                if (pathIndex > 10) pathIndex -= 10;
+                else pathIndex = 0;
             }
+            if (pathIndex != 0) targetLastSeenCounter = 0;
         }
 
-        while (i < path.Count)
+        int startPathIndex = pathIndex;
+        int i = (int)Mathf.Sqrt(Mathf.Max(pathIndex - (closestPathIndex+5), 1));
+        while (i < (path.Count - pathIndex) && i <= 20)
         {
-            Vector2 target = path[i];
+            Vector2 target = path[i + startPathIndex];
             if (Map.instance.walls.pathClearBetweenPositions(unit.position, target))
             {
-                pathIndex = i;
-                i++;
                 targetLastSeenCounter = 0;
+                pathIndex = i + startPathIndex;
+                i+=(int)Mathf.Sqrt(Mathf.Max(Mathf.Max(pathIndex - (closestPathIndex+5), 1), i));
             }
             else
             {
                 break;
             }
         }
-
         TargetNotSeen();
         steeringTargetIndex = pathIndex;
         return pathIndex;
@@ -106,12 +110,13 @@ public class PathExecutor
     private bool SkipTargetIndexChecking(float deltaTime)
     {
         targetUpdateTime += deltaTime;
-        if (Vector2.Distance(unit.position, steeringTarget) > 2 &&
+        if (Vector2.Distance(unit.position, steeringTarget) > 2*targetUpdateTime &&
             targetUpdateTime < targetUpdatePeriod)
             return true;
         else
         {
-            targetUpdateTime = UnityEngine.Random.Range(-0.5f, 0.5f);
+            targetUpdateTime = 0;
+            targetUpdatePeriod = targetUpdatePeriod + UnityEngine.Random.Range(-1.0f, 1.0f);
             return false;
         }
     }

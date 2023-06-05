@@ -6,9 +6,9 @@ public class FlowField
     public Vector2 getMovementDirection(Vector2 pos)
     {
         Coord ff = new Coord(Mathf.FloorToInt(pos.x), Mathf.FloorToInt(pos.y));
-        Coord fc = new Coord(Mathf.FloorToInt(pos.x), Mathf.CeilToInt(pos.y));
-        Coord cf = new Coord(Mathf.CeilToInt(pos.x), Mathf.FloorToInt(pos.y));
-        Coord cc = new Coord(Mathf.CeilToInt(pos.x), Mathf.CeilToInt(pos.y));
+        Coord fc = new Coord(Mathf.FloorToInt(pos.x), Mathf.Min(Mathf.CeilToInt(pos.y), flowField.GetLength(1)-1));
+        Coord cf = new Coord(Mathf.Min(Mathf.CeilToInt(pos.x), flowField.GetLength(0)-1), Mathf.FloorToInt(pos.y));
+        Coord cc = new Coord(Mathf.Min(Mathf.CeilToInt(pos.x), flowField.GetLength(0)-1), Mathf.Min(Mathf.CeilToInt(pos.y), flowField.GetLength(1)-1));
         float strengthFF = 1.5f - Vector2.Distance(pos, new Vector2(ff.X, ff.Y));
         float strengthFC = 1.5f - Vector2.Distance(pos, new Vector2(fc.X, fc.Y));
         float strengthCF = 1.5f - Vector2.Distance(pos, new Vector2(cf.X, cf.Y));

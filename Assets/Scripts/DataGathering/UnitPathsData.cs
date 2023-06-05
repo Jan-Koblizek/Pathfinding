@@ -7,6 +7,7 @@ public class UnitPathsData
     public int repaths;
     public int softRepaths;
     public Dictionary<int, List<Vector2>> unitPaths { get; set; }
+    public Dictionary<int, float> finishTimes { get; set; }
     public Dictionary<int, float> timeStuck { get; private set; }
     public float[,] stuckHeatMap { get; private set; }
     public float[,] movementPositionsMap { get; private set; }
@@ -14,16 +15,17 @@ public class UnitPathsData
 
     public UnitPathsData() {
         unitPaths = new Dictionary<int, List<Vector2>>();
+        finishTimes = new Dictionary<int, float>();
         timeStuck = new Dictionary<int, float>();
         travelDistances = new Dictionary<int, float>();
         repaths = 0;
         softRepaths = 0;
     }
 
-    public void ComputeResults()
+    public void ComputeResults(int specificationID)
     {
-        int mapWidth = Simulator.Instance.simulationSpecification.mapTexture.width;
-        int mapHeight = Simulator.Instance.simulationSpecification.mapTexture.height;
+        int mapWidth = Simulator.Instance.simulationSpecifications[specificationID].mapTexture.width;
+        int mapHeight = Simulator.Instance.simulationSpecifications[specificationID].mapTexture.height;
         movementPositionsMap = new float[mapWidth, mapHeight];
         stuckHeatMap = new float[mapWidth, mapHeight];
 
