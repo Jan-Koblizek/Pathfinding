@@ -1239,28 +1239,12 @@ MonoBehaviour:
   writeResults: 0
   automaticSimulation: 1
   numberOfSimulations: 1
-  movementModesTestedAutomatic: 06000000050000000200000000000000
+  movementModesTestedAutomatic: 0600000005000000
   internalMovementCycles: 2
   outerMovementCycles: 10
   drawUnits: 1
   simulationSpecifications:
-  - {fileID: 11400000, guid: 68eda073f4fa42841b30e822c46baec5, type: 2}
-  - {fileID: 11400000, guid: 16d8ebf7bd19d8246aa7c71e73c35c42, type: 2}
-  - {fileID: 11400000, guid: 07ab4d7f25ab6d5418391d73056ba63e, type: 2}
-  - {fileID: 11400000, guid: 519e238d85372e1478ff22f56dee4eef, type: 2}
-  - {fileID: 11400000, guid: a4fa96277f772c8478d7f0299e7a1d12, type: 2}
-  - {fileID: 11400000, guid: 7be358f1e5a011b42901f79824e3a09e, type: 2}
-  - {fileID: 11400000, guid: c39d7991fb71ca6498e8814fa0e3558f, type: 2}
-  - {fileID: 11400000, guid: 991adc30bd8d6644d8d8396f3ed3249f, type: 2}
-  - {fileID: 11400000, guid: c2b17405147880a4fbd7982abb27b0a8, type: 2}
-  - {fileID: 11400000, guid: ef0130df261e36545abab6862ff2b60c, type: 2}
-  - {fileID: 11400000, guid: df95937f4cd86c2418ff3a449d93f44e, type: 2}
-  - {fileID: 11400000, guid: a2d80e09d4f76704dbb2fb51df76a5c7, type: 2}
-  - {fileID: 11400000, guid: 5cbb61b8d30564b43a1d50c3801fc4cf, type: 2}
-  - {fileID: 11400000, guid: b4b8ad67ed8297c4298e522b35d8f0fe, type: 2}
-  - {fileID: 11400000, guid: aee0e21915b828948a60f60923bb0e9a, type: 2}
-  - {fileID: 11400000, guid: bbf0c3cc746052b47a707b2b89f0bf42, type: 2}
-  - {fileID: 11400000, guid: 7e987d58ed4bc144ebd40675b9db5cba, type: 2}
+  - {fileID: 11400000, guid: a68555cc8a369204fa32e31e07f5df60, type: 2}
   unitMovementManager: {fileID: 1257111349}
   unitPrefab: {fileID: 6790476649160748438, guid: 7d37d28fa24eafa4aaced73f99b47fe7, type: 3}
   unitsParent: {fileID: 45594955}

@@ -185,7 +185,6 @@ internal class ConcurrentPaths
 
 
             HashSet<PathID> pathsToMutate = FindPathsForMutation(alternatingSubPaths[1], negativeFlow);
-
             //randomly select a path that won't have full mutation but just partial
             int notFullMutationPathId = UnityEngine.Random.Range(0, pathsToMutate.Count);
             int i = 0;

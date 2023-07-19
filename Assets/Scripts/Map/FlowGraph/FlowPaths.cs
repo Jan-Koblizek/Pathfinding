@@ -42,7 +42,7 @@ public class FlowPaths
     /// </summary>
     /// <param name="flowGraph">Underlying graph</param>
     /// <param name="shortestPath">Path in question</param>
-    /// <returns>The flow on path that can be send trough all the edges.</returns>
+    /// <returns>The flow on path that can be sent trough all the edges.</returns>
     private static float GetSaturatingFlow(FlowGraph flowGraph, List<int> shortestPath)
     {
         float minAvailableCapacity = float.MaxValue;

@@ -252,12 +252,20 @@ public class UnitPathAssignmentFlowGraph
                 unit.MoveAlongThePath(gridPaths[i], i);
                 unit.SetTarget(unitPathAssignment.target);
                 unit.movementMode = MovementMode.PathFollowing;
-                /*
-                if (unitPathAssignment.indexOfGridPath == 1)
-                {
-                    unit.GetComponent<SpriteRenderer>().color = Color.blue;
-                }
-                */
+                if (i == 0)
+                    Simulator.Instance.unitMovementManager.unitsToVisualizations[unit].SetColor(Color.red);
+                else if (i == 1)
+                    Simulator.Instance.unitMovementManager.unitsToVisualizations[unit].SetColor(Color.blue);
+                else if (i == 2)
+                    Simulator.Instance.unitMovementManager.unitsToVisualizations[unit].SetColor(Color.green);
+                else if (i == 3)
+                    Simulator.Instance.unitMovementManager.unitsToVisualizations[unit].SetColor(Color.yellow);
+                else if (i == 4)
+                    Simulator.Instance.unitMovementManager.unitsToVisualizations[unit].SetColor(Color.magenta);
+                else if (i == 5)
+                    Simulator.Instance.unitMovementManager.unitsToVisualizations[unit].SetColor(Color.cyan);
+                else
+                    Simulator.Instance.unitMovementManager.unitsToVisualizations[unit].SetColor(Color.black);
             }
         }
     }

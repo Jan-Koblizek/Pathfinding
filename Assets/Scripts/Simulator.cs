@@ -343,7 +343,7 @@ public class Simulator : MonoBehaviour
                     
                     if (decomposition.IsGate(decomposition.regionMap[x, y]))
                     {
-                        Map.instance.groundTexture.SetPixel(x, y, colors[colors.Count - 1]);
+                        Map.instance.groundTexture.SetPixel(x, y, new Color(0.5f, 0.5f, 1.0f));//colors[colors.Count - 1]);
                     }
                     else if (decomposition.regionMap[x, y] >= 1000)
                     {

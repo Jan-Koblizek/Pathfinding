@@ -55,14 +55,22 @@ public class RegionalFlowGraphPathExecutor
 
     public Vector2 GetSeekForce(float deltaTime)
     {
-        /*
+        
         if (pathIndex == 0)
             Simulator.Instance.unitMovementManager.unitsToVisualizations[unit].SetColor(Color.red);
-        if (pathIndex == 1)
+        else if (pathIndex == 1)
             Simulator.Instance.unitMovementManager.unitsToVisualizations[unit].SetColor(Color.blue);
-        if (pathIndex == 2)
+        else if (pathIndex == 2)
             Simulator.Instance.unitMovementManager.unitsToVisualizations[unit].SetColor(Color.green);
-        */
+        else if (pathIndex == 3)
+            Simulator.Instance.unitMovementManager.unitsToVisualizations[unit].SetColor(Color.yellow);
+        else if (pathIndex == 4)
+            Simulator.Instance.unitMovementManager.unitsToVisualizations[unit].SetColor(Color.magenta);
+        else if (pathIndex == 5)
+            Simulator.Instance.unitMovementManager.unitsToVisualizations[unit].SetColor(Color.cyan);
+        else
+            Simulator.Instance.unitMovementManager.unitsToVisualizations[unit].SetColor(Color.black);
+
         int currentRegion = decomposition.regionMap[unit.currentCoord.X, unit.currentCoord.Y];
         if (!reachedFinalRegion &&
             regionalPath.regionalPaths[pathIndex].gatewayDirections.ContainsKey(currentRegion - RegionalDecomposition.GatewayIndexOffset) ||

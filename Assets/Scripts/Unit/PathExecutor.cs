@@ -116,7 +116,7 @@ public class PathExecutor
         else
         {
             targetUpdateTime = 0;
-            targetUpdatePeriod = targetUpdatePeriod + UnityEngine.Random.Range(-1.0f, 1.0f);
+            targetUpdatePeriod = targetUpdatePeriodBase + UnityEngine.Random.Range(-1.0f, 1.0f);
             return false;
         }
     }
