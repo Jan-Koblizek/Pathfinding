@@ -1,0 +1,17 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0a63efbd31d6f8e4d89284bbfe07baa0, type: 3}
+  m_Name: Starcraft-GladiatorPits-2
+  m_EditorClassIdentifier: 
+  mapTexture: {fileID: 2800000, guid: 64819a4e2e1c3ce49800786348d91406, type: 3}
+  unitStartMap: {fileID: 2800000, guid: 5962b9afa369cca4484dce340a3264bf, type: 3}
+  targetSize: 12
