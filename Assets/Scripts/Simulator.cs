@@ -78,6 +78,7 @@ public class Simulator : MonoBehaviour
         {
             simulationID = i;
             Map.instance.Initialize(simulationSpecifications[i].mapTexture);
+            DecomposeMap();
             if (target != null) Destroy(target.gameObject);
             target = Target.CreateTarget(simulationSpecifications[i].GetTargetPosition(), simulationSpecifications[i].targetSize, targetPrefab);
             warmUpStartPositions = simulationSpecifications[i].GetWarmUpStartPositions();
@@ -194,7 +195,7 @@ public class Simulator : MonoBehaviour
         {
             for (int i = 0; i < outerMovementCycles; i++)
             {
-                float deltaTime = 0.02f;
+                float deltaTime = 0.01f;
                 unitMovementManager.MoveUnits(deltaTime, internalMovementCycles);
                 simulationTime += deltaTime * internalMovementCycles;
             }
@@ -351,7 +352,7 @@ public class Simulator : MonoBehaviour
                     }
                     else
                     {
-                        Map.instance.groundTexture.SetPixel(x, y, colors[decomposition.regionMap[x, y]]);
+                        Map.instance.groundTexture.SetPixel(x, y, Color.white);//colors[decomposition.regionMap[x, y]]);
                     }
                     
                     /*

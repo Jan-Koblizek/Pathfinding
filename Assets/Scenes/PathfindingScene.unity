@@ -790,7 +790,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &572419087
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1238,7 +1238,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   writeResults: 0
   automaticSimulation: 1
-  numberOfSimulations: 1
+  numberOfSimulations: 2
   movementModesTestedAutomatic: 0600000005000000
   internalMovementCycles: 2
   outerMovementCycles: 10
